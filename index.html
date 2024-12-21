@@ -1,0 +1,1509 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Jiggle Factorial 3D</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #gui-container { position: absolute; top: 10px; right: 10px; z-index: 1; }
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    #message {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 72px;
+      font-family: Arial, sans-serif;
+      text-shadow: 1px 1px 2px black;
+    }
+    #instructions {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      color: white;
+      font-size: 16px;
+      font-family: Arial, sans-serif;
+      text-shadow: 1px 1px 2px black;
+    }
+    #average-display {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      color: white;
+      font-size: 24px;
+      font-family: Arial, sans-serif;
+      text-shadow: 1px 1px 2px black;
+      display: flex;
+      align-items: center;
+    }
+    #average-display button {
+      margin-left: 10px;
+      background-color: #007bff;
+      color: white;
+      font-size: 16px;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    #graph-popup {
+      display: none; /* Hidden by default */
+      position: fixed;
+      top: 15%;
+      left: 15%;
+      width: 70%;
+      height: 70%;
+      background-color: rgba(0, 0, 0, 0.8);
+      z-index: 2;
+    }
+    #graph-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    #progress-chart {
+      width: 100%;
+      height: 100%;
+    }
+    #close-graph-button {
+      position: absolute;
+      top: 5px; 
+      left: 5px;
+      background-color: #ff0000;
+      color: white;
+      font-size: 18px;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      opacity: 0.5;
+    }
+
+    #center-dot {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background-color: red;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .dg.main {
+      background: rgba(40, 40, 40, 0.8);
+    }
+    .disabled {
+      pointer-events: none;
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+  <div id="gui-container"></div>
+  <div id="overlay">
+    <div id="message"></div>
+    <!-- Center Dot -->
+    <div id="center-dot"></div>
+  </div>
+  <div id="instructions">
+    Scroll = Zoom, Left Mouse Drag = Rotate, Right Mouse Drag = Move (only works if you disable automatic screen rotation)
+  </div>
+  <div id="average-display">
+    Avg Score: N/A | Avg Accuracy: N/A%
+    <button id="show-graph-button">Show Progress Graph</button>
+  </div>
+  <!-- Popup for Graph -->
+  <div id="graph-popup">
+    <div id="graph-container">
+      <canvas id="progress-chart"></canvas>
+      <button id="close-graph-button">X</button>
+    </div>
+  </div>
+  <!-- Include Three.js and dat.GUI -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
+  <!-- Include FontLoader and TextGeometry -->
+  <script src="https://threejs.org/examples/js/loaders/FontLoader.js"></script>
+  <script src="https://threejs.org/examples/js/geometries/TextGeometry.js"></script>
+  <!-- Include Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+
+    // Global Variables
+    const sessionId = Date.now();
+    let scene, camera, renderer, controls;
+    let gui;
+    let balls = [];
+    let targetBalls = [];
+    let distractorBalls = [];
+    let coloredDistractorBalls = [];
+    let selectedBalls = [];
+    let targetSequence = [];
+    let userSequence = [];
+    let isSequenceShowing = false;
+    let isUserTurn = false;
+    let settings;
+    let raycaster = new THREE.Raycaster();
+    let mouse = new THREE.Vector2();
+    let messageElement = document.getElementById('message');
+    let centerDotElement = document.getElementById('center-dot'); // Center Dot Element
+    let screenRotationAngle = 0;
+    let loadedFont; // Global variable to store the loaded font
+    let activeTimeouts = []; // Array to store active timeouts
+    let correctAnswersCount = 0;
+    let incorrectAnswersCount = 0;
+    let currentOrder = 'Ascending'; // Variable to store the current order
+    let isGameStarting = false; // Prevent multiple initializations
+    let flashModeTimeouts = []; // To store timeouts related to Flash Mode
+    let mistakeMade = false; // Flag to track if a mistake has been made
+
+    // New variables for score tracking
+    let totalTrials = 0;
+    let trialScores = [];
+    let trialAccuracies = [];
+    let cumulativeScore = 0;
+    let cumulativeCorrectSelections = 0;
+    let cumulativeTotalTargets = 0;
+
+    const averageDisplayElement = document.getElementById('average-display');
+
+    // Graph elements
+    const showGraphButton = document.getElementById('show-graph-button');
+    const graphPopup = document.getElementById('graph-popup');
+    const closeGraphButton = document.getElementById('close-graph-button');
+
+    init();
+    animate();
+
+    function init() {
+      // Scene Setup
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x202020); // Dark gray background
+
+      // Camera Setup
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+      camera.position.z = 60; // Set initial camera position
+
+      // Renderer Setup
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true; // Enable shadow mapping
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      document.body.appendChild(renderer.domElement);
+
+      // Controls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.enableZoom = true;
+      controls.enableRotate = true;
+      controls.enablePan = true;
+
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      directionalLight.position.set(50, 50, 50);
+      directionalLight.castShadow = true;
+      directionalLight.shadow.mapSize.width = 1024;
+      directionalLight.shadow.mapSize.height = 1024;
+      directionalLight.shadow.camera.near = 0.5;
+      directionalLight.shadow.camera.far = 500;
+      scene.add(directionalLight);
+
+      const spotlight1 = new THREE.SpotLight(0xffffff, 0.6);
+      spotlight1.position.set(-50, 50, -50);
+      spotlight1.castShadow = true;
+      scene.add(spotlight1);
+
+      const spotlight2 = new THREE.SpotLight(0xffffff, 0.6);
+      spotlight2.position.set(50, -50, 50);
+      spotlight2.castShadow = true;
+      scene.add(spotlight2);
+
+      const pointLight = new THREE.PointLight(0xffffff, 0.5);
+      camera.add(pointLight);
+      scene.add(camera);
+
+      // GUI Setup
+      settings = {
+        level: 2,
+        movementMode: 'Combination',
+        verticalRotationGroups: 2,
+        horizontalRotationGroups: 2,
+        rotationSpeed: 0.01,
+        isRandomMode: false,
+        orderMode: 'Combined',
+        isNonConsecutiveMode: true,
+        autoProgression: true,
+        showAnswers: true,
+        isRegular3DMOT: false,
+        numBlueDistractors: 5,
+        numColoredDistractors: 5,
+        ballSpeed: 0.1,
+        boxSize: 50,
+        screenRotation: true,
+        screenRotationSpeed: 0.002,
+        screenRotationDistance: 60,
+        rotateX: true,
+        rotateY: true,
+        rotateZ: true,
+        varyRotationDistance: false,
+        highlightDuration: 1000,
+        delayAfterSequence: 1000,
+        numberSize: 3,
+        dotSize: 5, // Center Dot Size
+        // Flash Mode settings
+        flashMode: false,
+        flashDurationMin: 160,
+        flashDurationMax: 400,
+        intervalDurationMin: 2000,
+        intervalDurationMax: 3000,
+        // Auto Progression settings
+        // Level adjustment
+        levelChangeByCorrect: 1,
+        everyCorrectLevel: 1,
+        levelChangeByIncorrect: -1,
+        everyIncorrectLevel: 1,
+        // Ball Speed adjustment
+        ballSpeedChangeByCorrect: 0,
+        everyCorrectBallSpeed: 1,
+        ballSpeedChangeByIncorrect: 0,
+        everyIncorrectBallSpeed: 1,
+        // Highlight Duration adjustment
+        highlightDurationChangeByCorrect: 0,
+        everyCorrectHighlightDuration: 1,
+        highlightDurationChangeByIncorrect: 0,
+        everyIncorrectHighlightDuration: 1,
+        // Delay Timer adjustment
+        delayAfterChangeByCorrect: 0,
+        everyCorrectDelayAfter: 1,
+        delayAfterChangeByIncorrect: 0,
+        everyIncorrectDelayAfter: 1,
+        trialStartDelay: 2000,
+        startGame: startGame
+      };
+
+      gui = new dat.GUI({ autoPlace: false });
+      document.getElementById('gui-container').appendChild(gui.domElement);
+
+      gui.add(settings, 'level').name('Level');
+      const movementModeController = gui.add(settings, 'movementMode', ['Non-Rotating', 'Rotating', 'Combination']).name('Movement Mode');
+      movementModeController.__li.setAttribute('title', 'Choose how balls move: Non-Rotating, Rotating around the center of the screen, or a Combination of both.');
+      const rotationFolder = gui.addFolder('Rotation Mode Settings');
+      rotationFolder.add(settings, 'verticalRotationGroups').name('Vertical Groups');
+      rotationFolder.add(settings, 'horizontalRotationGroups').name('Horizontal Groups');
+      rotationFolder.add(settings, 'rotationSpeed').name('Rotation Speed');
+
+      const randomModeController = gui.add(settings, 'isRandomMode').name('Random Mode');
+      randomModeController.__li.setAttribute('title','When enabled, the target balls are selected in a random order, rather than ascending.');
+
+      const orderModeController = gui.add(settings, 'orderMode', ['Ascending', 'Descending', 'Combined', 'Extended Combined']).name('Order Mode');
+      
+      const nonConsecutiveController = gui.add(settings, 'isNonConsecutiveMode').name('Non-Consecutive Mode');
+      nonConsecutiveController.__li.setAttribute('title', 'When enabled,  the numbering of target balls might skip numbers (e.g. 1, 4, 56)');
+
+      // Add the Regular 3D MOT toggle
+      const regularMOTController = gui.add(settings, 'isRegular3DMOT').name('Regular 3D MOT Mode');
+      regularMOTController.__li.setAttribute('title', 'When enabled, the order of ball selection does not matter');
+      // Give it a special background color so it stands out
+      regularMOTController.__li.style.backgroundColor = '#ffa500'; // or any unique color you like
+      // Hide Random Mode, Order Mode, and Non-Consecutive Mode when isRegular3DMOT is true
+      regularMOTController.onChange(value => {
+        // Hide or show the existing controllers:
+        randomModeController.domElement.parentNode.style.display = value ? 'none' : '';
+        orderModeController.domElement.parentNode.style.display = value ? 'none' : '';
+        nonConsecutiveController.domElement.parentNode.style.display = value ? 'none' : '';
+
+        // Optionally, you might also want to reset their values if isRegular3DMOT is activated:
+        // if (value) {
+        //   settings.isRandomMode = false;
+        //   settings.orderMode = 'Combined';
+        //   settings.isNonConsecutiveMode = false;
+        // }
+      });
+
+
+      gui.add(settings, 'showAnswers').name('Show Answers');
+      gui.add(settings, 'numBlueDistractors').name('# Blue Distractors');
+      gui.add(settings, 'numColoredDistractors').name('# Colored Distractors');
+      gui.add(settings, 'ballSpeed').name('Ball Speed');
+      gui.add(settings, 'boxSize').name('Box Size');
+
+      const screenRotationFolder = gui.addFolder('Screen Rotation');
+      screenRotationFolder.add(settings, 'screenRotation').name('Enable');
+      screenRotationFolder.add(settings, 'screenRotationSpeed').name('Speed');
+      screenRotationFolder.add(settings, 'screenRotationDistance').name('Distance');
+      screenRotationFolder.add(settings, 'rotateX').name('Rotate X');
+      screenRotationFolder.add(settings, 'rotateY').name('Rotate Y');
+      screenRotationFolder.add(settings, 'rotateZ').name('Rotate Z');
+      screenRotationFolder.add(settings, 'varyRotationDistance').name('Vary Distance');
+
+      gui.add(settings, 'highlightDuration').name('Highlight Duration');
+      gui.add(settings, 'delayAfterSequence').name('Delay After');
+      gui.add(settings, 'numberSize').name('Number Size');
+
+      // Add Center Dot Size Controller
+      gui.add(settings, 'dotSize').name('Center Dot Size').min(0).onChange(updateCenterDot);
+
+      // Flash Mode GUI
+      const flashModeFolder = gui.addFolder('Flash Mode Settings');
+      flashModeFolder.add(settings, 'flashMode').name('Enable Flash Mode');
+      flashModeFolder.add(settings, 'flashDurationMin').name('Flash Duration Min (ms)');
+      flashModeFolder.add(settings, 'flashDurationMax').name('Flash Duration Max (ms)');
+      flashModeFolder.add(settings, 'intervalDurationMin').name('Interval Min (ms)');
+      flashModeFolder.add(settings, 'intervalDurationMax').name('Interval Max (ms)');
+
+      // Auto Progression GUI
+      const autoProgressionFolder = gui.addFolder('Auto Progression');
+      autoProgressionFolder.add(settings, 'autoProgression').name('Enable');
+
+      const levelAdjustmentFolder = autoProgressionFolder.addFolder('Level Adjustment');
+      levelAdjustmentFolder.add(settings, 'levelChangeByCorrect').name('Change by');
+      levelAdjustmentFolder.add(settings, 'everyCorrectLevel').name('Every Correct').min(1).step(1);
+      levelAdjustmentFolder.add(settings, 'levelChangeByIncorrect').name('Change by');
+      levelAdjustmentFolder.add(settings, 'everyIncorrectLevel').name('Every Incorrect').min(1).step(1);
+
+      const ballSpeedAdjustmentFolder = autoProgressionFolder.addFolder('Ball Speed Adjustment');
+      ballSpeedAdjustmentFolder.add(settings, 'ballSpeedChangeByCorrect').name('Change by');
+      ballSpeedAdjustmentFolder.add(settings, 'everyCorrectBallSpeed').name('Every Correct').min(1).step(1);
+      ballSpeedAdjustmentFolder.add(settings, 'ballSpeedChangeByIncorrect').name('Change by');
+      ballSpeedAdjustmentFolder.add(settings, 'everyIncorrectBallSpeed').name('Every Incorrect').min(1).step(1);
+
+      const highlightDurationAdjustmentFolder = autoProgressionFolder.addFolder('Highlight Duration Adjustment');
+      highlightDurationAdjustmentFolder.add(settings, 'highlightDurationChangeByCorrect').name('Change by');
+      highlightDurationAdjustmentFolder.add(settings, 'everyCorrectHighlightDuration').name('Every Correct').min(1).step(1);
+      highlightDurationAdjustmentFolder.add(settings, 'highlightDurationChangeByIncorrect').name('Change by');
+      highlightDurationAdjustmentFolder.add(settings, 'everyIncorrectHighlightDuration').name('Every Incorrect').min(1).step(1);
+
+      const delayTimerAdjustmentFolder = autoProgressionFolder.addFolder('Delay Timer Adjustment');
+      delayTimerAdjustmentFolder.add(settings, 'delayAfterChangeByCorrect').name('Change by');
+      delayTimerAdjustmentFolder.add(settings, 'everyCorrectDelayAfter').name('Every Correct').min(1).step(1);
+      delayTimerAdjustmentFolder.add(settings, 'delayAfterChangeByIncorrect').name('Change by');
+      delayTimerAdjustmentFolder.add(settings, 'everyIncorrectDelayAfter').name('Every Incorrect').min(1).step(1);
+
+      gui.add(settings, 'trialStartDelay').name('Trial Start Delay (ms)');
+
+      // Add "Start Game" button at the end
+      gui.add(settings, 'startGame').name('Start Game');
+
+      // Event Listeners
+      window.addEventListener('resize', onWindowResize, false);
+      renderer.domElement.addEventListener('pointerdown', onDocumentMouseDown, false);
+
+      // Event Listeners for Graph Buttons
+      showGraphButton.addEventListener('click', () => {
+        if (graphPopup.style.display === 'block') {
+          graphPopup.style.display = 'none';
+        } else {
+          graphPopup.style.display = 'block';
+          renderProgressChart();
+        }
+      });
+
+      closeGraphButton.addEventListener('click', () => {
+        graphPopup.style.display = 'none';
+      });
+
+      // Load the font once
+      const fontLoader = new THREE.FontLoader();
+      fontLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function(font) {
+        loadedFont = font;
+        // Start the game after the font has loaded
+        startGame();
+      }, undefined, function(err) {
+        console.error('An error happened loading the font:', err);
+        // Proceed to start the game even if font loading fails
+        startGame();
+      });
+
+      // Initialize the center dot
+      updateCenterDot();
+    }
+
+    function updateCenterDot() {
+      const size = settings.dotSize;
+      if (size <= 0) {
+        centerDotElement.style.display = 'none';
+      } else {
+        centerDotElement.style.display = 'block';
+        centerDotElement.style.width = `${size}px`;
+        centerDotElement.style.height = `${size}px`;
+      }
+    }
+
+    function startGame() {
+      if (isGameStarting) return; // Prevent multiple initializations
+      isGameStarting = true;
+
+      // Disable the Start Game button
+      gui.__controllers.forEach(controller => {
+        if (controller.property === 'startGame') {
+          controller.__li.classList.add('disabled');
+        }
+      });
+
+      // Clear previous timeouts and intervals
+      activeTimeouts.forEach(timeout => clearTimeout(timeout));
+      activeTimeouts = [];
+
+      // Clear Flash Mode timeouts
+      clearFlashModeTimeouts();
+
+      // Clear game-specific objects
+      clearGameObjects();
+
+      // Reset game state variables
+      isSequenceShowing = false;
+      isUserTurn = false;
+      messageElement.textContent = '';
+      screenRotationAngle = 0;
+      mistakeMade = false; // Reset mistake flag
+
+      // Update settings
+      updateSettings();
+
+      // Create Bounding Box
+      createBoundingBox();
+
+      // Create Balls
+      createBalls();
+
+      // Start Sequence
+      let timeout = setTimeout(highlightTargetBalls, 1000);
+      activeTimeouts.push(timeout);
+
+      // Start Flash Mode if enabled
+      startFlashMode();
+
+      // Re-enable the Start Game button after initialization
+      isGameStarting = false;
+      gui.__controllers.forEach(controller => {
+        if (controller.property === 'startGame') {
+          controller.__li.classList.remove('disabled');
+        }
+      });
+    }
+
+    function clearGameObjects() {
+      // Remove only game-specific objects (balls, bounding box, labels)
+      for (let i = scene.children.length - 1; i >= 0; i--) {
+        const obj = scene.children[i];
+        if (obj.userData.isGameObject) {
+          disposeObject(obj);
+          scene.remove(obj);
+        }
+      }
+      balls = [];
+      targetBalls = [];
+      distractorBalls = [];
+      coloredDistractorBalls = [];
+      selectedBalls = [];
+      targetSequence = [];
+      userSequence = [];
+    }
+
+    function disposeObject(obj) {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach(material => material.dispose());
+        } else {
+          obj.material.dispose();
+        }
+      }
+      // Dispose of children recursively
+      if (obj.children) {
+        obj.children.forEach(child => disposeObject(child));
+      }
+    }
+
+    function updateSettings() {
+      // Update settings from GUI
+      settings.level = Math.max(1, Math.round(settings.level));
+      settings.numBlueDistractors = Math.round(settings.numBlueDistractors);
+      settings.numColoredDistractors = Math.round(settings.numColoredDistractors);
+      settings.verticalRotationGroups = Math.round(settings.verticalRotationGroups);
+      settings.horizontalRotationGroups = Math.round(settings.horizontalRotationGroups);
+    }
+
+    function createBoundingBox() {
+      const boxSize = settings.boxSize;
+
+      // Create the solid box with slightly opaque walls
+      const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
+      const material = new THREE.MeshPhongMaterial({
+        color: 0x888888,
+        transparent: true,
+        opacity: 0.1, // Slightly opaque
+        side: THREE.BackSide, // Render inside faces
+      });
+      const box = new THREE.Mesh(geometry, material);
+      box.receiveShadow = true;
+      box.userData.isGameObject = true; // Mark as game object
+      scene.add(box);
+
+      // Add thin white edges to the box
+      const edges = new THREE.EdgesGeometry(geometry);
+      const edgeMaterial = new THREE.LineBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.2,
+      });
+      const boundingBoxEdges = new THREE.LineSegments(edges, edgeMaterial);
+      boundingBoxEdges.userData.isGameObject = true; // Mark as game object
+      scene.add(boundingBoxEdges);
+    }
+
+    function createBalls() {
+      const totalBalls = settings.level + settings.numBlueDistractors + settings.numColoredDistractors;
+
+      // Create an array to store positions to prevent overlapping
+      const positions = [];
+
+      // Create Target Balls
+      for (let i = 0; i < settings.level; i++) {
+        const ball = createBall(0x87CEEB); // Sky blue ball
+
+        // Random non-overlapping position
+        setNonOverlappingPosition(ball, positions);
+
+        scene.add(ball);
+        balls.push(ball);
+        targetBalls.push(ball);
+      }
+
+      // Create Blue Distractor Balls
+      for (let i = 0; i < settings.numBlueDistractors; i++) {
+        const ball = createBall(0x87CEEB); // Sky blue ball
+
+        // Random non-overlapping position
+        setNonOverlappingPosition(ball, positions);
+
+        scene.add(ball);
+        balls.push(ball);
+        distractorBalls.push(ball);
+      }
+
+      // Create Colored Distractor Balls
+      for (let i = 0; i < settings.numColoredDistractors; i++) {
+        const color = getRandomColor([0x87CEEB, 0xff0000, 0xffff00]); // Exclude sky blue, red, yellow
+        const ball = createBall(color);
+
+        // Random non-overlapping position
+        setNonOverlappingPosition(ball, positions);
+
+        scene.add(ball);
+        balls.push(ball);
+        coloredDistractorBalls.push(ball);
+      }
+
+      // Assign Movement
+      assignMovement();
+    }
+
+    function createBall(color) {
+      const geometry = new THREE.SphereGeometry(1.5, 32, 32);
+      const material = new THREE.MeshPhongMaterial({ color: color });
+      const ball = new THREE.Mesh(geometry, material);
+      ball.castShadow = true;
+      ball.receiveShadow = true;
+      ball.userData = {
+        velocity: new THREE.Vector3(),
+        isRotating: false,
+        rotationGroup: 0,
+        rotationAxis: '',
+        originalColor: color,
+        rotationAngle: 0,
+        isGameObject: true, // Mark as game object
+        isCurrentlyHighlighted: false,
+        isFlashing: false
+      };
+      return ball;
+    }
+
+    function setNonOverlappingPosition(ball, positions) {
+      const maxAttempts = 100;
+      let attempts = 0;
+      let positionFound = false;
+
+      while (!positionFound && attempts < maxAttempts) {
+        attempts++;
+        const halfBox = settings.boxSize / 2 - 5;
+        ball.position.x = (Math.random() - 0.5) * (halfBox * 2);
+        ball.position.y = (Math.random() - 0.5) * (halfBox * 2);
+        ball.position.z = (Math.random() - 0.5) * (halfBox * 2);
+
+        let overlapping = false;
+        for (let pos of positions) {
+          if (ball.position.distanceTo(pos) < 3) {
+            overlapping = true;
+            break;
+          }
+        }
+
+        if (!overlapping) {
+          positions.push(ball.position.clone());
+          positionFound = true;
+        }
+      }
+    }
+
+    function assignMovement() {
+      if (settings.movementMode === 'Combination') {
+        // Randomly assign each ball to rotate or move randomly
+        for (let ball of balls) {
+          if (Math.random() < 0.5) {
+            // Assign rotation movement to the ball
+            assignRotationMovement([ball]);
+          } else {
+            // Assign random movement to the ball
+            assignRandomMovement([ball]);
+          }
+        }
+      } else if (settings.movementMode === 'Rotating') {
+        // Assign rotation movement
+        assignRotationMovement(balls);
+      } else {
+        // Assign random movement
+        assignRandomMovement(balls);
+      }
+    }
+
+    function assignRandomMovement(ballArray) {
+      for (let ball of ballArray) {
+        const direction = new THREE.Vector3(
+          (Math.random() - 0.5),
+          (Math.random() - 0.5),
+          (Math.random() - 0.5)
+        ).normalize();
+        ball.userData.velocity.copy(direction.multiplyScalar(settings.ballSpeed));
+        ball.userData.isRotating = false;
+      }
+    }
+
+    function assignRotationMovement(ballArray) {
+      for (let ball of ballArray) {
+        ball.userData.isRotating = true;
+        ball.userData.rotationAxis = Math.random() < 0.5 ? 'vertical' : 'horizontal';
+        ball.userData.rotationRadius = 10 + Math.random() * 10; // Random radius between 10 and 20
+        ball.userData.rotationAngle = Math.random() * Math.PI * 2; // Random starting angle
+        ball.userData.rotationSpeed = (Math.random() > 0.5 ? 1 : -1) * settings.rotationSpeed;
+      }
+    }
+
+    function highlightTargetBalls() {
+      isSequenceShowing = true;
+      let numbers = [];
+      if (settings.isNonConsecutiveMode) {
+        numbers = generateNonConsecutiveNumbers(settings.level);
+      } else {
+        for (let i = 1; i <= settings.level; i++) {
+          numbers.push(i);
+        }
+      }
+
+      // Assign numbers to target balls
+      targetSequence = [];
+      for (let i = 0; i < targetBalls.length; i++) {
+        targetSequence.push({ ball: targetBalls[i], number: numbers[i] });
+      }
+
+      // Sort targetSequence by number (ascending)
+      targetSequence.sort((a, b) => a.number - b.number);
+
+      // Build highlightSequence from targetSequence
+      let highlightSequence = [...targetSequence];
+
+      // Shuffle the highlightSequence for Random Mode
+      if (settings.isRandomMode) {
+        highlightSequence = shuffleArray(highlightSequence);
+      }
+
+      let index = 0;
+      function highlightNextBall() {
+        if (index > 0) {
+          // Reset previous ball color
+          const previous = highlightSequence[index - 1];
+          previous.ball.material.color.set(0x87CEEB);
+          previous.ball.userData.isCurrentlyHighlighted = false; // Unmark as highlighted
+
+          // Remove label
+          disposeLabel(previous.ball.userData.label);
+          previous.ball.remove(previous.ball.userData.label);
+          previous.ball.userData.label = null;
+        }
+        if (index < highlightSequence.length) {
+          // Highlight current ball
+          const current = highlightSequence[index];
+          current.ball.material.color.set(0xff0000);
+          current.ball.userData.isCurrentlyHighlighted = true; // Mark as highlighted
+
+          // Add number label
+          addNumberLabel(current.ball, current.number);
+          index++;
+          let timeout = setTimeout(highlightNextBall, settings.highlightDuration);
+          activeTimeouts.push(timeout);
+        } else {
+          // End of sequence
+          isSequenceShowing = false;
+          // Reset last ball color and remove label
+          const lastBall = highlightSequence[index - 1].ball;
+          lastBall.material.color.set(0x87CEEB);
+          lastBall.userData.isCurrentlyHighlighted = false; // Unmark as highlighted
+          disposeLabel(lastBall.userData.label);
+          lastBall.remove(lastBall.userData.label);
+          lastBall.userData.label = null;
+
+          // Determine the order
+          let possibleOrders;
+
+          if (settings.orderMode === 'Descending') {
+            currentOrder = 'Descending';
+            targetSequence = targetSequence.slice().reverse();
+          } else if (settings.orderMode === 'Combined') {
+            // Original combined: choose Ascending or Descending
+            currentOrder = Math.random() < 0.5 ? 'Ascending' : 'Descending';
+            if (currentOrder === 'Descending') {
+              targetSequence = targetSequence.slice().reverse();
+            }
+          } else if (settings.orderMode === 'Extended Combined' && settings.isRandomMode) {
+            // Extended combined only applies if random mode is on
+            // The four possible orders: Ascending, Descending, Presented, Reverse Presented
+            // 'highlightSequence' represents the order they were presented.
+            possibleOrders = ['Ascending', 'Descending', 'Presented', 'Reverse Presented'];
+            currentOrder = possibleOrders[Math.floor(Math.random()*possibleOrders.length)];
+
+            if (currentOrder === 'Ascending') {
+              targetSequence = targetSequence.slice().sort((a, b) => a.number - b.number);
+            } else if (currentOrder === 'Descending') {
+              targetSequence = targetSequence.slice().sort((a, b) => b.number - a.number);
+            } else if (currentOrder === 'Presented') {
+              // Presented order: use the highlightSequence order as is
+              // targetSequence should reflect the order they were highlighted
+              // highlightSequence currently holds that order
+              targetSequence = highlightSequence;
+            } else if (currentOrder === 'Reverse Presented') {
+              // Reverse of presented order
+              targetSequence = highlightSequence.slice().reverse();
+            }
+          } else {
+            // Default to Ascending if extended combined chosen but random mode not active, or any fallback
+            currentOrder = 'Ascending';
+            targetSequence = targetSequence.slice().sort((a, b) => a.number - b.number);
+          }
+
+
+          // Start delay before user can interact
+          messageElement.textContent = 'Get Ready...';
+          let timeout = setTimeout(() => {
+            isUserTurn = true;
+            mistakeMade = false; // Reset mistake flag
+            if (settings.isRegular3DMOT) {
+              messageElement.textContent = 'Select in any order';
+            } else {
+              messageElement.textContent = 'Your Turn! Select in ' + currentOrder + ' order.';
+            }
+
+            // Freeze balls
+            freezeBalls();
+          }, settings.delayAfterSequence);
+          activeTimeouts.push(timeout);
+        }
+      }
+      highlightNextBall();
+    }
+
+    function addNumberLabel(ball, number) {
+      if (!loadedFont) return; // Ensure the font is loaded
+
+      const geometry = new THREE.TextGeometry(number.toString(), {
+        font: loadedFont,
+        size: settings.numberSize,
+        height: settings.numberSize * 0.1,
+      });
+
+      const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const textMesh = new THREE.Mesh(geometry, material);
+
+      // Center the text geometry
+      geometry.computeBoundingBox();
+      const centerOffsetX = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+      const centerOffsetY = -0.5 * (geometry.boundingBox.max.y - geometry.boundingBox.min.y);
+      const offsetZ = 1.6 + settings.numberSize * 0.1; // Adjust Z based on number size
+      textMesh.position.set(centerOffsetX, centerOffsetY, offsetZ);
+
+      textMesh.userData.isLabel = true; // Mark as label for easy identification
+      ball.add(textMesh);
+      ball.userData.label = textMesh;
+    }
+
+    function disposeLabel(label) {
+      if (label) {
+        if (label.geometry) label.geometry.dispose();
+        if (label.material) label.material.dispose();
+      }
+    }
+
+    function freezeBalls() {
+      for (let ball of balls) {
+        ball.userData.velocity.set(0, 0, 0);
+        ball.userData.isRotating = false;
+      }
+    }
+
+    function onDocumentMouseDown(event) {
+      if (!isUserTurn) {
+        if (!isSequenceShowing) {
+          // During delay period
+          messageElement.textContent = 'Please wait...';
+          let timeout = setTimeout(() => {
+            if (messageElement.textContent === 'Please wait...') {
+              messageElement.textContent = '';
+            }
+          }, 1000); // Clear the message after 1 second
+          activeTimeouts.push(timeout);
+        }
+        return;
+      }
+
+      event.preventDefault();
+
+      // Calculate mouse position
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = - ((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      // Raycasting
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(balls, true); // Include descendants
+
+      if (intersects.length > 0) {
+        const selectedObject = intersects[0].object;
+        const parentBall = selectedObject.parent.type === 'Mesh' ? selectedObject.parent : selectedObject;
+
+        // Check if already selected
+        if (selectedBalls.includes(parentBall)) return;
+
+        selectedBalls.push(parentBall);
+        userSequence.push(parentBall);
+
+        if (targetBalls.includes(parentBall)) {
+          // Check if the selected ball is the correct one in the sequence
+          if (parentBall === targetSequence[userSequence.length - 1].ball && !mistakeMade) {
+            // Correct selection
+            parentBall.material.color.set(0xffff00); // Turn yellow
+          } else {
+            // Wrong sequence but correct target ball
+            if (settings.isRegular3DMOT) {
+              parentBall.material.color.set(0xffff00); // bright yellow when out-of-order in 3D MOT
+            } else {
+              parentBall.material.color.set(0xffa500); // orange otherwise
+            }
+
+            mistakeMade = true;
+          }
+        } else {
+          // Player selected a distractor ball
+          parentBall.material.color.set(0xff0000); // Turn red
+          mistakeMade = true;
+        }
+
+        // Check if the player has selected enough balls
+        if (userSequence.length === targetSequence.length) {
+          isUserTurn = false;
+          checkUserSequence();
+        }
+      }
+    }
+
+    function checkUserSequence() {
+
+      // --- START OF ADDED BLOCK ---
+      if (settings.isRegular3DMOT) {
+          // We ignore any specific order and check if the user selected all targetBalls (and only those)
+          
+          // 1) Ensure userSequence contains all targetBalls
+          let allTargetsSelected = targetBalls.every(ball => userSequence.includes(ball));
+          // 2) Ensure userSequence does NOT include any distractors
+          let includedDistractor = userSequence.some(ball => !targetBalls.includes(ball));
+
+          if (allTargetsSelected && !includedDistractor) {
+            // The user is correct in Regular 3D MOT modex
+            cumulativeScore += settings.level;
+            cumulativeCorrectSelections += targetBalls.length;
+
+            messageElement.textContent = 'Correct!';
+            correctAnswersCount++;
+            incorrectAnswersCount = 0; // Reset incorrect count
+
+            if (settings.autoProgression) {
+              adjustSettingsBasedOnPerformance(true);
+            }
+            
+            // Save trial data
+            saveTrialData(settings.level);
+
+            let timeout = setTimeout(startGame, settings.trialStartDelay);
+            activeTimeouts.push(timeout);
+            return; // We exit here, skipping the rest of checkUserSequence
+          } else {
+            // The user is incorrect
+            cumulativeScore += Math.max(settings.level - 1, 0);
+            cumulativeCorrectSelections += userSequence.filter(ball => targetBalls.includes(ball)).length;
+
+            messageElement.textContent = 'Incorrect selection.';
+            incorrectAnswersCount++;
+            correctAnswersCount = 0; // Reset correct count
+
+            if (settings.showAnswers) {
+              showCorrectSequence();
+            }
+            if (settings.autoProgression) {
+              adjustSettingsBasedOnPerformance(false);
+            }
+
+            // Save trial data
+            saveTrialData(trialScores[trialScores.length - 1]);
+
+            let timeout = setTimeout(startGame, settings.trialStartDelay);
+            activeTimeouts.push(timeout);
+            return; // Done
+          }
+        }
+        // --- END OF ADDED BLOCK ---
+
+
+      totalTrials++;
+      cumulativeTotalTargets += targetSequence.length;
+
+      let trialScore = 0;
+      if (!mistakeMade) {
+        // Correct sequence
+        trialScore = settings.level; // Full score
+        cumulativeScore += trialScore;
+        cumulativeCorrectSelections += targetSequence.length;
+        messageElement.textContent = 'Correct!';
+        correctAnswersCount++;
+        incorrectAnswersCount = 0; // Reset incorrect count
+
+        if (settings.autoProgression) {
+          adjustSettingsBasedOnPerformance(true);
+        }
+      } else {
+        // Mistake was made
+        if (userSequence.some(ball => !targetBalls.includes(ball))) {
+          // Player selected a distractor ball
+          trialScore = Math.max(settings.level - 1, 0); // Minimum score is level - 1
+          cumulativeScore += trialScore;
+        } else {
+          // Correct balls but incorrect sequence
+          trialScore = settings.level - 0.5;
+          cumulativeScore += trialScore;
+        }
+        cumulativeCorrectSelections += userSequence.filter(ball => targetBalls.includes(ball)).length;
+        handleIncorrectSelection(trialScore);
+        return;
+      }
+
+      // Save trial data
+      saveTrialData(trialScore);
+
+      let timeout = setTimeout(startGame, settings.trialStartDelay);
+      activeTimeouts.push(timeout);
+    }
+
+    function handleIncorrectSelection(trialScore) {
+      if (settings.showAnswers) {
+        showCorrectSequence();
+      }
+      messageElement.textContent = 'Incorrect sequence.';
+
+      incorrectAnswersCount++;
+      correctAnswersCount = 0; // Reset correct count
+
+      if (settings.autoProgression) {
+        adjustSettingsBasedOnPerformance(false);
+      }
+
+      // Save trial data
+      saveTrialData(trialScore);
+
+      let timeout = setTimeout(startGame, settings.trialStartDelay);
+      activeTimeouts.push(timeout);
+    }
+
+    function saveTrialData(trialScore) {
+      // Save score for this trial
+      trialScores.push(trialScore);
+
+      // Calculate accuracy for this trial
+      const trialAccuracy = (userSequence.filter(ball => targetBalls.includes(ball)).length / targetSequence.length) * 100;
+      trialAccuracies.push(trialAccuracy);
+
+      // Update average after every trial
+      updateAverageDisplay();
+
+      // Save daily progress
+      saveDailyProgress(trialScore);
+    }
+
+    function updateAverageDisplay() {
+      const totalScore = trialScores.reduce((a, b) => a + b, 0);
+      const averageScore = totalScore / trialScores.length;
+
+      const totalAccuracy = trialAccuracies.reduce((a, b) => a + b, 0);
+      const averageAccuracy = totalAccuracy / trialAccuracies.length;
+
+      averageDisplayElement.firstChild.textContent = `Avg Score: ${averageScore.toFixed(2)} | Avg Accuracy: ${averageAccuracy.toFixed(2)}%`;
+    }
+
+    function saveDailyProgress(trialScore) {
+      const today = new Date().toISOString().split('T')[0];
+      const progressData = JSON.parse(localStorage.getItem('progressData')) || [];
+
+      // Calculate average score and accuracy
+      const totalScore = trialScores.reduce((a, b) => a + b, 0);
+      const averageScore = totalScore / trialScores.length;
+      const averageAccuracy = (cumulativeCorrectSelections / cumulativeTotalTargets) * 100;
+
+      // Check if data for today already exists
+      const todayDataIndex = progressData.findIndex(data => data.date === today);
+
+      if (todayDataIndex >= 0) {
+        // Update existing data
+        const existingData = progressData[todayDataIndex];
+        // Create a session data object for the current session
+        const sessionData = {
+          sessionId: sessionId,
+          sessionAverageScore: averageScore,
+          sessionAverageAccuracy: averageAccuracy,
+          sessionMaxScore: trialScore,
+          sessionTrialsCompleted: trialScores.length
+        };
+
+
+        // If no sessions array exists for today, create it
+        if (!existingData.sessions) {
+          existingData.sessions = [];
+        }
+
+        // Check if a session with the current sessionId already exists for today
+        let existingSessionIndex = existingData.sessions.findIndex(s => s.sessionId === sessionId);
+
+        if (existingSessionIndex >= 0) {
+          // Update the existing session for this sessionId
+          let existingSession = existingData.sessions[existingSessionIndex];
+          existingSession.sessionAverageScore = averageScore;
+          existingSession.sessionAverageAccuracy = averageAccuracy;
+          existingSession.sessionMaxScore = Math.max(existingSession.sessionMaxScore, trialScore);
+          existingSession.sessionTrialsCompleted = trialScores.length;
+        } else {
+          // Add a new session for this sessionId
+          existingData.sessions.push(sessionData);
+        }
+
+
+
+        // Recalculate daily aggregates from all sessions of today
+        const totalSessions = existingData.sessions.length;
+
+        const dailyAvgScore = existingData.sessions.reduce((sum, s) => sum + s.sessionAverageScore, 0) / totalSessions;
+        const dailyAvgAccuracy = existingData.sessions.reduce((sum, s) => sum + s.sessionAverageAccuracy, 0) / totalSessions;
+        const dailyMaxScore = Math.max(...existingData.sessions.map(s => s.sessionMaxScore));
+        const dailyTrialsCompleted = existingData.sessions.reduce((sum, s) => sum + s.sessionTrialsCompleted, 0);
+
+        existingData.averageScore = dailyAvgScore;
+        existingData.averageAccuracy = dailyAvgAccuracy;
+        existingData.maxScore = dailyMaxScore;
+        existingData.trialsCompleted = dailyTrialsCompleted;
+
+      } else {
+        // Add new data
+        progressData.push({
+        date: today,
+        sessions: [{
+          sessionAverageScore: averageScore,
+          sessionAverageAccuracy: averageAccuracy,
+          sessionMaxScore: trialScore,
+          sessionTrialsCompleted: trialScores.length
+        }],
+        averageScore: averageScore,
+        averageAccuracy: averageAccuracy,
+        maxScore: trialScore,
+        trialsCompleted: trialScores.length
+      });
+
+      }
+
+      // Save back to localStorage
+      localStorage.setItem('progressData', JSON.stringify(progressData));
+    }
+
+    function renderProgressChart() {
+      const ctx = document.getElementById('progress-chart').getContext('2d');
+
+      // Retrieve data from localStorage
+      const progressData = JSON.parse(localStorage.getItem('progressData')) || [];
+
+      const labels = progressData.map(data => data.date);
+      const scores = progressData.map(data => data.averageScore);
+      const accuracies = progressData.map(data => data.averageAccuracy);
+      const maxScores = progressData.map(data => data.maxScore);
+      const trialsCompleted = progressData.map(data => data.trialsCompleted);
+
+      // Destroy existing chart instance if it exists
+      if (window.myLineChart) {
+        window.myLineChart.destroy();
+      }
+
+      window.myLineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Average Score',
+            data: scores,
+            borderColor: 'rgba(75, 192, 192, 1)',
+            fill: false,
+            yAxisID: 'y-axis-1',
+          }, {
+            label: 'Average Accuracy (%)',
+            data: accuracies,
+            borderColor: 'rgba(255, 99, 132, 1)',
+            fill: false,
+            yAxisID: 'y-axis-2',
+          }, {
+            label: 'Max Score',
+            data: maxScores,
+            borderColor: 'rgba(255, 206, 86, 1)',
+            fill: false,
+            yAxisID: 'y-axis-1', // Same axis as average score
+          }, {
+            label: 'Trials Completed',
+            data: trialsCompleted,
+            borderColor: 'rgba(153, 102, 255, 1)',
+            fill: false,
+            yAxisID: 'y-axis-3',
+          }]
+        },
+        options: {
+          scales: {
+            yAxes: [{
+              type: 'linear',
+              position: 'left',
+              id: 'y-axis-1',
+              ticks: {
+                beginAtZero: true,
+                suggestedMax: Math.max(...maxScores) + 2
+              },
+              scaleLabel: {
+                display: true,
+                labelString: 'Score'
+              }
+            }, {
+              type: 'linear',
+              position: 'right',
+              id: 'y-axis-2',
+              ticks: {
+                max: 100,
+                min: 0
+              },
+              gridLines: {
+                drawOnChartArea: false,
+              },
+              scaleLabel: {
+                display: true,
+                labelString: 'Accuracy (%)'
+              }
+            }, {
+              type: 'linear',
+              position: 'right',
+              id: 'y-axis-3',
+              ticks: {
+                beginAtZero: true,
+                suggestedMax: Math.max(...trialsCompleted) + 2
+              },
+              gridLines: {
+                drawOnChartArea: false,
+              },
+              scaleLabel: {
+                display: true,
+                labelString: 'Trials Completed'
+              }
+            }]
+          }
+        }
+      });
+    }
+
+    function adjustSettingsBasedOnPerformance(isCorrect) {
+      if (isCorrect) {
+        // Correct Answer Adjustments
+        if (correctAnswersCount % settings.everyCorrectLevel === 0) {
+          settings.level += settings.levelChangeByCorrect;
+          settings.level = Math.max(1, settings.level);
+        }
+        if (settings.ballSpeedChangeByCorrect !== 0 && correctAnswersCount % settings.everyCorrectBallSpeed === 0) {
+          settings.ballSpeed += settings.ballSpeedChangeByCorrect;
+        }
+        if (settings.highlightDurationChangeByCorrect !== 0 && correctAnswersCount % settings.everyCorrectHighlightDuration === 0) {
+          settings.highlightDuration += settings.highlightDurationChangeByCorrect;
+        }
+        if (settings.delayAfterChangeByCorrect !== 0 && correctAnswersCount % settings.everyCorrectDelayAfter === 0) {
+          settings.delayAfterSequence += settings.delayAfterChangeByCorrect;
+        }
+      } else {
+        // Incorrect Answer Adjustments
+        if (incorrectAnswersCount % settings.everyIncorrectLevel === 0) {
+          settings.level += settings.levelChangeByIncorrect;
+          settings.level = Math.max(1, settings.level);
+        }
+        if (settings.ballSpeedChangeByIncorrect !== 0 && incorrectAnswersCount % settings.everyIncorrectBallSpeed === 0) {
+          settings.ballSpeed += settings.ballSpeedChangeByIncorrect;
+          settings.ballSpeed = Math.max(0, settings.ballSpeed);
+        }
+        if (settings.highlightDurationChangeByIncorrect !== 0 && incorrectAnswersCount % settings.everyIncorrectHighlightDuration === 0) {
+          settings.highlightDuration += settings.highlightDurationChangeByIncorrect;
+          settings.highlightDuration = Math.max(0, settings.highlightDuration);
+        }
+        if (settings.delayAfterChangeByIncorrect !== 0 && incorrectAnswersCount % settings.everyIncorrectDelayAfter === 0) {
+          settings.delayAfterSequence += settings.delayAfterChangeByIncorrect;
+          settings.delayAfterSequence = Math.max(0, settings.delayAfterSequence);
+        }
+      }
+    }
+
+    function showCorrectSequence() {
+      for (let i = 0; i < targetSequence.length; i++) {
+        let target = targetSequence[i];
+        // Remove existing label if any
+        if (target.ball.userData.label) {
+          disposeLabel(target.ball.userData.label);
+          target.ball.remove(target.ball.userData.label);
+          target.ball.userData.label = null;
+        }
+        target.ball.material.color.set(0x00ff00); // Turn green
+        addNumberLabel(target.ball, i + 1); // Add number label
+      }
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Make spheres look at the camera
+      balls.forEach(ball => {
+        ball.lookAt(camera.position);
+      });
+
+      // Update balls position
+      if (!isUserTurn) {
+        updateBallPositions();
+      }
+
+      // Screen Rotation
+      if (settings.screenRotation) {
+        screenRotationAngle += settings.screenRotationSpeed;
+        let radius = settings.screenRotationDistance;
+
+        // Adjust radius if varyRotationDistance is enabled
+        if (settings.varyRotationDistance) {
+          radius += Math.sin(screenRotationAngle * 0.5) * 10; // Change 10 to adjust the variance
+        }
+
+        // Calculate camera position to maintain constant distance
+        let x = camera.position.x;
+        let y = camera.position.y;
+        let z = camera.position.z;
+
+        if (settings.rotateX && settings.rotateY && settings.rotateZ) {
+          // Rotate around all axes while keeping constant distance
+          const theta = screenRotationAngle; // Horizontal angle
+          const phi = Math.acos(Math.sin(screenRotationAngle * 0.7)); // Vertical angle
+          x = radius * Math.sin(phi) * Math.cos(theta);
+          y = radius * Math.cos(phi);
+          z = radius * Math.sin(phi) * Math.sin(theta);
+        } else {
+          // Handle individual axis rotations
+          let position = new THREE.Vector3();
+          if (settings.rotateX) {
+            position.x = radius * Math.sin(screenRotationAngle);
+          } else {
+            position.x = camera.position.x;
+          }
+          if (settings.rotateY) {
+            position.y = radius * Math.sin(screenRotationAngle * 0.7);
+          } else {
+            position.y = camera.position.y;
+          }
+          if (settings.rotateZ) {
+            position.z = radius * Math.cos(screenRotationAngle);
+          } else {
+            position.z = camera.position.z;
+          }
+          x = position.x;
+          y = position.y;
+          z = position.z;
+        }
+
+        camera.position.set(x, y, z);
+        camera.lookAt(scene.position);
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    function updateBallPositions() {
+      for (let ball of balls) {
+        if (ball.userData.isRotating) {
+          ball.userData.rotationAngle += ball.userData.rotationSpeed;
+          const angle = ball.userData.rotationAngle;
+          const radius = ball.userData.rotationRadius;
+
+          if (ball.userData.rotationAxis === 'vertical') {
+            // Vertical rotation around Y-axis
+            ball.position.x = radius * Math.cos(angle);
+            ball.position.z = radius * Math.sin(angle);
+          } else {
+            // Horizontal rotation around X-axis
+            ball.position.y = radius * Math.sin(angle);
+            ball.position.z = radius * Math.cos(angle);
+          }
+        } else {
+          ball.position.add(ball.userData.velocity);
+
+          // Bounce off walls
+          const halfBox = settings.boxSize / 2 - 2;
+          if (ball.position.x > halfBox || ball.position.x < -halfBox) {
+            ball.userData.velocity.x *= -1;
+            ball.position.x = THREE.MathUtils.clamp(ball.position.x, -halfBox, halfBox);
+          }
+          if (ball.position.y > halfBox || ball.position.y < -halfBox) {
+            ball.userData.velocity.y *= -1;
+            ball.position.y = THREE.MathUtils.clamp(ball.position.y, -halfBox, halfBox);
+          }
+          if (ball.position.z > halfBox || ball.position.z < -halfBox) {
+            ball.userData.velocity.z *= -1;
+            ball.position.z = THREE.MathUtils.clamp(ball.position.z, -halfBox, halfBox);
+          }
+        }
+      }
+
+      // Check for collisions
+      for (let i = 0; i < balls.length; i++) {
+        for (let j = i + 1; j < balls.length; j++) {
+          const ball1 = balls[i];
+          const ball2 = balls[j];
+          const distance = ball1.position.distanceTo(ball2.position);
+          if (distance < 3) {
+            // Simple collision response
+            const temp = ball1.userData.velocity.clone();
+            ball1.userData.velocity.copy(ball2.userData.velocity);
+            ball2.userData.velocity.copy(temp);
+          }
+        }
+      }
+    }
+
+    // Flash Mode Functions
+    function startFlashMode() {
+      if (!settings.flashMode) return;
+
+      // Schedule the next flash
+      const intervalDuration = getRandomInRange(settings.intervalDurationMin, settings.intervalDurationMax);
+      let timeout = setTimeout(() => {
+        flashRandomBalls();
+        startFlashMode(); // Schedule the next flash
+      }, intervalDuration);
+      flashModeTimeouts.push(timeout);
+    }
+
+    function flashRandomBalls() {
+      // Determine flash duration
+      const flashDuration = getRandomInRange(settings.flashDurationMin, settings.flashDurationMax);
+
+      // Get eligible balls (exclude currently highlighted target balls)
+      const eligibleBalls = balls.filter(ball => !ball.userData.isCurrentlyHighlighted);
+
+      if (eligibleBalls.length === 0) return;
+
+      // Randomly select a subset of eligible balls
+      const numberOfBallsToFlash = Math.floor(Math.random() * eligibleBalls.length) + 1;
+      const ballsToFlash = shuffleArray(eligibleBalls).slice(0, numberOfBallsToFlash);
+
+      // Make selected balls invisible
+      ballsToFlash.forEach(ball => {
+        ball.visible = false;
+        ball.userData.isFlashing = true;
+      });
+
+      // Restore visibility after flash duration
+      let timeout = setTimeout(() => {
+        ballsToFlash.forEach(ball => {
+          ball.visible = true;
+          ball.userData.isFlashing = false;
+        });
+      }, flashDuration);
+      flashModeTimeouts.push(timeout);
+    }
+
+    function clearFlashModeTimeouts() {
+      flashModeTimeouts.forEach(timeout => clearTimeout(timeout));
+      flashModeTimeouts = [];
+      // Ensure all balls are visible
+      balls.forEach(ball => {
+        if (ball.userData.isFlashing) {
+          ball.visible = true;
+          ball.userData.isFlashing = false;
+        }
+      });
+    }
+
+    // Utility Functions
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function generateNonConsecutiveNumbers(count) {
+      const numbers = [];
+      while (numbers.length < count) {
+        const num = Math.floor(Math.random() * 100) + 1;
+        if (!numbers.includes(num)) {
+          numbers.push(num);
+        }
+      }
+      return numbers;
+    }
+
+    function getRandomColor(excludeColors) {
+      let color;
+      do {
+        color = Math.floor(Math.random() * 0xffffff);
+      } while (excludeColors.includes(color));
+      return color;
+    }
+
+    function getRandomInRange(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+  </script>
+</body>
+</html>
