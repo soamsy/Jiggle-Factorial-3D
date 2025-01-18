@@ -147,6 +147,7 @@
     let userSequence = [];
     let isSequenceShowing = false;
     let isUserTurn = false;
+    let defaultSettings;
     let settings;
     let raycaster = new THREE.Raycaster();
     let mouse = new THREE.Vector2();
@@ -231,7 +232,7 @@
       scene.add(camera);
 
       // GUI Setup
-      settings = {
+      defaultSettings = {
         level: 2,
         movementMode: 'Combination',
         verticalRotationGroups: 2,
@@ -286,8 +287,15 @@
         delayAfterChangeByIncorrect: 0,
         everyIncorrectDelayAfter: 1,
         trialStartDelay: 2000,
-        startGame: startGame
       };
+
+      settings = {
+        ...defaultSettings,
+        startGame: startGame,
+        resetApp: resetApp,
+      }
+
+      loadSettings();
 
       gui = new dat.GUI({ autoPlace: false });
       document.getElementById('gui-container').appendChild(gui.domElement);
@@ -387,6 +395,9 @@
       delayTimerAdjustmentFolder.add(settings, 'delayAfterChangeByIncorrect').name('Change by');
       delayTimerAdjustmentFolder.add(settings, 'everyIncorrectDelayAfter').name('Every Incorrect').min(1).step(1);
 
+      const resetFolder = gui.addFolder('Reset App');
+      resetFolder.add(settings, 'resetApp').name('Reset to default');
+
       gui.add(settings, 'trialStartDelay').name('Trial Start Delay (ms)');
 
       // Add "Start Game" button at the end
@@ -395,6 +406,13 @@
       // Event Listeners
       window.addEventListener('resize', onWindowResize, false);
       renderer.domElement.addEventListener('pointerdown', onDocumentMouseDown, false);
+
+      gui.__controllers.forEach(controller => {
+        controller.onChange((value) => {
+          updateSettings();
+          saveSettings();
+        });
+      });
 
       // Event Listeners for Graph Buttons
       showGraphButton.addEventListener('click', () => {
@@ -465,9 +483,6 @@
       screenRotationAngle = 0;
       mistakeMade = false; // Reset mistake flag
 
-      // Update settings
-      updateSettings();
-
       // Create Bounding Box
       createBoundingBox();
 
@@ -530,6 +545,30 @@
       settings.numColoredDistractors = Math.round(settings.numColoredDistractors);
       settings.verticalRotationGroups = Math.round(settings.verticalRotationGroups);
       settings.horizontalRotationGroups = Math.round(settings.horizontalRotationGroups);
+    }
+
+    function loadSettings() {
+      const storedSettings = JSON.parse(localStorage.getItem('jiggle-3d-settings'));
+      if (storedSettings) {
+        Object.assign(settings, storedSettings);
+      }
+    }
+
+    function saveSettings() {
+      localStorage.setItem('jiggle-3d-settings', JSON.stringify(settings));
+    }
+
+    function repopulateGui() {
+      gui.__controllers.forEach(controller => {
+        controller.updateDisplay();
+      });
+    }
+
+    function resetApp() {
+      Object.assign(settings, defaultSettings);
+      saveSettings();
+      repopulateGui();
+      startGame();
     }
 
     function createBoundingBox() {
@@ -1277,6 +1316,8 @@
           settings.delayAfterSequence = Math.max(0, settings.delayAfterSequence);
         }
       }
+      repopulateGui();
+      saveSettings();
     }
 
     function showCorrectSequence() {
