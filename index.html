@@ -137,6 +137,7 @@
     // Global Variables
     const sessionId = Date.now();
     let scene, camera, renderer, controls;
+    let envMap;
     let gui;
     let balls = [];
     let targetBalls = [];
@@ -185,6 +186,11 @@
       // Scene Setup
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x202020); // Dark gray background
+      envMap = new THREE.TextureLoader().load('hdri.jpg', (texture) => {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        texture.encoding = THREE.sRGBEncoding;
+      });
+      scene.environment = envMap;
 
       // Camera Setup
       camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
@@ -648,7 +654,13 @@
 
     function createBall(color) {
       const geometry = new THREE.SphereGeometry(1.5, 32, 32);
-      const material = new THREE.MeshPhongMaterial({ color: color });
+      const material = new THREE.MeshStandardMaterial({
+        color: color,
+        metalness: 0.6,
+        roughness: 0.65,
+        emissive: "#FFFFFF",
+        emissiveIntensity: 0.1,
+      });
       const ball = new THREE.Mesh(geometry, material);
       ball.castShadow = true;
       ball.receiveShadow = true;
@@ -663,6 +675,18 @@
         isCurrentlyHighlighted: false,
         isFlashing: false
       };
+
+      const outlineGeometry = new THREE.SphereGeometry(1.5 + 0.12, 32, 32);
+      const outlineMaterial = new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        side: THREE.BackSide,
+        depthWrite: false,
+        opacity: 0.5,
+        transparent: true,
+      });
+      const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
+      ball.add(outline);
+
       return ball;
     }
 
