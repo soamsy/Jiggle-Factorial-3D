@@ -962,23 +962,29 @@
       const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
       const textMesh = new THREE.Mesh(geometry, material);
 
+      const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide, });
+      const outlineMesh = new THREE.Mesh(geometry, outlineMaterial);
+      outlineMesh.scale.set(1.05, 1.05, 1.05);
+
+      const textGroup = new THREE.Group();
+      textGroup.add(textMesh);
+      textGroup.add(outlineMesh);
+
       // Center the text geometry
       geometry.computeBoundingBox();
       const centerOffsetX = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
       const centerOffsetY = -0.5 * (geometry.boundingBox.max.y - geometry.boundingBox.min.y);
       const offsetZ = 1.6 + settings.numberSize * 0.1; // Adjust Z based on number size
-      textMesh.position.set(centerOffsetX, centerOffsetY, offsetZ);
+      textGroup.position.set(centerOffsetX, centerOffsetY, offsetZ);
 
-      textMesh.userData.isLabel = true; // Mark as label for easy identification
-      ball.add(textMesh);
-      ball.userData.label = textMesh;
+      textGroup.userData.isLabel = true; // Mark as label for easy identification
+      ball.add(textGroup);
+      ball.userData.label = textGroup;
     }
 
     function disposeLabel(label) {
-      if (label) {
-        if (label.geometry) label.geometry.dispose();
-        if (label.material) label.material.dispose();
-      }
+      if (!label) return;
+      disposeObject(label);
     }
 
     function freezeBalls() {
