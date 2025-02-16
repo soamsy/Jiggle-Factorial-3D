@@ -922,6 +922,7 @@
 
     function addNumberLabel(ball, number) {
       if (!loadedFont) return; // Ensure the font is loaded
+      if (settings.isRegular3DMOT) return;
 
       const geometry = new THREE.TextGeometry(number.toString(), {
         font: loadedFont,
