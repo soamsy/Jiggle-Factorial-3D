@@ -253,7 +253,9 @@
         numBlueDistractors: 5,
         numColoredDistractors: 5,
         ballSpeed: 0.1,
-        boxSize: 50,
+        boxX: 50,
+        boxY: 50,
+        boxZ: 50,
         screenRotation: true,
         screenRotationSpeed: 0.002,
         screenRotationDistance: 60,
@@ -347,7 +349,9 @@
       gui.add(settings, 'numBlueDistractors').name('# Blue Distractors');
       gui.add(settings, 'numColoredDistractors').name('# Colored Distractors');
       gui.add(settings, 'ballSpeed').name('Ball Speed');
-      gui.add(settings, 'boxSize').name('Box Size');
+      gui.add(settings, 'boxX').name('Box Width');
+      gui.add(settings, 'boxY').name('Box Height');
+      gui.add(settings, 'boxZ').name('Box Depth');
 
       const screenRotationFolder = gui.addFolder('Screen Rotation');
       screenRotationFolder.add(settings, 'screenRotation').name('Enable');
@@ -578,10 +582,12 @@
     }
 
     function createBoundingBox() {
-      const boxSize = settings.boxSize;
+      const boxX = settings.boxX;
+      const boxY = settings.boxY;
+      const boxZ = settings.boxZ;
 
       // Create the solid box with slightly opaque walls
-      const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
+      const geometry = new THREE.BoxGeometry(boxX, boxY, boxZ);
       const material = new THREE.MeshPhongMaterial({
         color: 0x888888,
         transparent: true,
@@ -697,10 +703,12 @@
 
       while (!positionFound && attempts < maxAttempts) {
         attempts++;
-        const halfBox = settings.boxSize / 2 - 5;
-        ball.position.x = (Math.random() - 0.5) * (halfBox * 2);
-        ball.position.y = (Math.random() - 0.5) * (halfBox * 2);
-        ball.position.z = (Math.random() - 0.5) * (halfBox * 2);
+        const halfX = settings.boxX / 2 - 5;
+        const halfY = settings.boxX / 2 - 5;
+        const halfZ = settings.boxX / 2 - 5;
+        ball.position.x = (Math.random() - 0.5) * (halfX * 2);
+        ball.position.y = (Math.random() - 0.5) * (halfY * 2);
+        ball.position.z = (Math.random() - 0.5) * (halfZ * 2);
 
         let overlapping = false;
         for (let pos of positions) {
@@ -1451,18 +1459,20 @@
           ball.position.add(ball.userData.velocity);
 
           // Bounce off walls
-          const halfBox = settings.boxSize / 2 - 2;
-          if (ball.position.x > halfBox || ball.position.x < -halfBox) {
+          const halfX = settings.boxX / 2 - 2;
+          const halfY = settings.boxY / 2 - 2;
+          const halfZ = settings.boxZ / 2 - 2;
+          if (ball.position.x > halfX || ball.position.x < -halfX) {
             ball.userData.velocity.x *= -1;
-            ball.position.x = THREE.MathUtils.clamp(ball.position.x, -halfBox, halfBox);
+            ball.position.x = THREE.MathUtils.clamp(ball.position.x, -halfX, halfX);
           }
-          if (ball.position.y > halfBox || ball.position.y < -halfBox) {
+          if (ball.position.y > halfY || ball.position.y < -halfY) {
             ball.userData.velocity.y *= -1;
-            ball.position.y = THREE.MathUtils.clamp(ball.position.y, -halfBox, halfBox);
+            ball.position.y = THREE.MathUtils.clamp(ball.position.y, -halfY, halfY);
           }
-          if (ball.position.z > halfBox || ball.position.z < -halfBox) {
+          if (ball.position.z > halfZ || ball.position.z < -halfZ) {
             ball.userData.velocity.z *= -1;
-            ball.position.z = THREE.MathUtils.clamp(ball.position.z, -halfBox, halfBox);
+            ball.position.z = THREE.MathUtils.clamp(ball.position.z, -halfZ, halfZ);
           }
         }
       }
