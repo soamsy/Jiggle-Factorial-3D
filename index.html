@@ -1530,15 +1530,21 @@
           const halfY = settings.boxY / 2 - 2;
           const halfZ = settings.boxZ / 2 - 2;
           if (ball.position.x > halfX || ball.position.x < -halfX) {
-            ball.userData.velocity.x *= -1;
+            const needsFlip = (ball.position.x > halfX && ball.userData.velocity.x > 0) || (ball.position.x < -halfX && ball.userData.velocity.x < 0);
+            if (needsFlip)
+              ball.userData.velocity.x *= -1;
             ball.position.x = THREE.MathUtils.clamp(ball.position.x, -halfX, halfX);
           }
           if (ball.position.y > halfY || ball.position.y < -halfY) {
-            ball.userData.velocity.y *= -1;
+            const needsFlip = (ball.position.y > halfY && ball.userData.velocity.y > 0) || (ball.position.y < -halfY && ball.userData.velocity.y < 0);
+            if (needsFlip)
+              ball.userData.velocity.y *= -1;
             ball.position.y = THREE.MathUtils.clamp(ball.position.y, -halfY, halfY);
           }
           if (ball.position.z > halfZ || ball.position.z < -halfZ) {
-            ball.userData.velocity.z *= -1;
+            const needsFlip = (ball.position.z > halfZ && ball.userData.velocity.z > 0) || (ball.position.z < -halfZ && ball.userData.velocity.z < 0);
+            if (needsFlip)
+              ball.userData.velocity.z *= -1;
             ball.position.z = THREE.MathUtils.clamp(ball.position.z, -halfZ, halfZ);
           }
         }
