@@ -418,7 +418,10 @@
       renderer.domElement.addEventListener('pointerdown', onDocumentMouseDown, false);
 
       gui.__controllers.forEach(controller => {
+        const originalOnChange = controller.__onChange;
         controller.onChange((value) => {
+          if (originalOnChange)
+            originalOnChange(value);
           updateSettings();
           saveSettings();
         });
