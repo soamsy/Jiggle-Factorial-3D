@@ -267,6 +267,7 @@
         numBlueDistractors: 5,
         numColoredDistractors: 5,
         ballSpeed: 0.1,
+        ballOpacity: 1.0,
         boxX: 50,
         boxY: 50,
         boxZ: 50,
@@ -367,6 +368,7 @@
       gui.add(settings, 'boxX').name('Box Width');
       gui.add(settings, 'boxY').name('Box Height');
       gui.add(settings, 'boxZ').name('Box Depth');
+      gui.add(settings, 'ballOpacity').min(0.5).max(1.0).name('Ball Opacity');
 
       const screenRotationFolder = gui.addFolder('Screen Rotation');
       screenRotationFolder.add(settings, 'screenRotation').name('Enable');
@@ -692,6 +694,8 @@
         roughness: 0.65,
         emissive: "#FFFFFF",
         emissiveIntensity: 0.1,
+        transparent: true,
+        opacity: settings.ballOpacity,
       });
       const ball = new THREE.Mesh(geometry, material);
       ball.castShadow = true;
