@@ -1421,7 +1421,8 @@
           target.ball.remove(target.ball.userData.label);
           target.ball.userData.label = null;
         }
-        target.ball.material.color.set(0x00ff00); // Turn green
+        if (!userSequence.includes(target.ball))
+          target.ball.material.color.set(0x00ff00); // Turn green
         addNumberLabel(target.ball, i + 1); // Add number label
       }
     }
