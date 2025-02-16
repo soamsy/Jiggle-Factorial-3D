@@ -736,8 +736,8 @@
       while (!positionFound && attempts < maxAttempts) {
         attempts++;
         const halfX = settings.boxX / 2 - 5;
-        const halfY = settings.boxX / 2 - 5;
-        const halfZ = settings.boxX / 2 - 5;
+        const halfY = settings.boxY / 2 - 5;
+        const halfZ = settings.boxZ / 2 - 5;
         ball.position.x = (Math.random() - 0.5) * (halfX * 2);
         ball.position.y = (Math.random() - 0.5) * (halfY * 2);
         ball.position.z = (Math.random() - 0.5) * (halfZ * 2);
