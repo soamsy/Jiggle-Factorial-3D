@@ -93,6 +93,20 @@
       border-radius: 50%;
       pointer-events: none;
     }
+
+    #center-dot.blink {
+      animation: fadeInOut 2s infinite;
+    }
+
+    @keyframes fadeInOut {
+      0%, 100% {
+        opacity: 0.3;
+      }
+      50% {
+        opacity: 1;
+      }
+    }
+
     .dg.main {
       background: rgba(40, 40, 40, 0.8);
     }
@@ -267,6 +281,7 @@
         delayAfterSequence: 1000,
         numberSize: 3,
         dotSize: 5, // Center Dot Size
+        blinkDot: false,
         // Flash Mode settings
         flashMode: false,
         flashDurationMin: 160,
@@ -368,6 +383,7 @@
 
       // Add Center Dot Size Controller
       gui.add(settings, 'dotSize').name('Center Dot Size').min(0).onChange(updateCenterDot);
+      gui.add(settings, 'blinkDot').name('Make Dot Blink').onChange(updateCenterDot);
 
       // Flash Mode GUI
       const flashModeFolder = gui.addFolder('Flash Mode Settings');
@@ -465,6 +481,13 @@
         centerDotElement.style.display = 'block';
         centerDotElement.style.width = `${size}px`;
         centerDotElement.style.height = `${size}px`;
+      }
+
+      const shouldBlinkDot = settings.blinkDot;
+      if (shouldBlinkDot) {
+        centerDotElement.classList.add('blink');
+      } else {
+        centerDotElement.classList.remove('blink');
       }
     }
 
