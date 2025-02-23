@@ -195,6 +195,7 @@
 
     init();
     animate();
+    updateGame();
 
     function init() {
       // Scene Setup
@@ -1442,7 +1443,12 @@
 
     function animate() {
       requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
 
+    function updateGame() {
+      setTimeout(() => updateGame(), 1000 / 60);
       // Make spheres look at the camera
       balls.forEach(ball => {
         ball.lookAt(camera.position);
@@ -1501,9 +1507,6 @@
         camera.position.set(x, y, z);
         camera.lookAt(scene.position);
       }
-
-      controls.update();
-      renderer.render(scene, camera);
     }
 
     function updateBallPositions() {
