@@ -150,6 +150,7 @@
 
     // Global Variables
     const BALL_RADIUS = 1.5;
+    const DEFAULT_BALL_COLOR = '#FFDD99';
     const sessionId = Date.now();
     let scene, camera, renderer, controls;
     let envMap;
@@ -187,6 +188,9 @@
     let cumulativeCorrectSelections = 0;
     let cumulativeTotalTargets = 0;
 
+    let ballTexture;
+    let ballNormalTexture;
+
     const averageDisplayElement = document.getElementById('average-display');
 
     // Graph elements
@@ -214,7 +218,7 @@
         numBlueDistractors: 7,
         numColoredDistractors: 0,
         ballSpeed: 0.35,
-        ballOpacity: 0.9,
+        ballOpacity: 0.92,
         boxX: 50,
         boxY: 40,
         boxZ: 25,
@@ -302,7 +306,7 @@
       scene.add(ambientLight);
 
       const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-      directionalLight.position.set(50, 50, 50);
+      directionalLight.position.set(settings.boxX / 2, settings.boxY, settings.boxZ / 2);
       directionalLight.castShadow = true;
       directionalLight.shadow.mapSize.width = 1024;
       directionalLight.shadow.mapSize.height = 1024;
@@ -310,21 +314,24 @@
       directionalLight.shadow.camera.far = 500;
       scene.add(directionalLight);
 
-      const spotlight1 = new THREE.SpotLight(0xffffff, 0.6);
+      const spotlight1 = new THREE.SpotLight(0xffffff, 0.2);
       spotlight1.position.set(-50, 50, -50);
       spotlight1.castShadow = true;
       scene.add(spotlight1);
 
-      const spotlight2 = new THREE.SpotLight(0xffffff, 0.6);
+      const spotlight2 = new THREE.SpotLight(0xffffff, 0.2);
       spotlight2.position.set(50, -50, 50);
       spotlight2.castShadow = true;
       scene.add(spotlight2);
 
-      const pointLight = new THREE.PointLight(0xffffff, 0.5);
+      const pointLight = new THREE.PointLight(0xffffff, 0.2);
       camera.add(pointLight);
       scene.add(camera);
 
-      // GUI Setup
+      const textureLoader = new THREE.TextureLoader();
+      ballTexture = textureLoader.load('texture.jpg');
+      ballNormalTexture = textureLoader.load('normal.jpg');
+
       gui = new dat.GUI({ autoPlace: false });
       document.getElementById('gui-container').appendChild(gui.domElement);
 
@@ -623,7 +630,7 @@
       // Create the solid box with slightly opaque walls
       const geometry = new THREE.BoxGeometry(boxX, boxY, boxZ);
       const material = new THREE.MeshPhongMaterial({
-        color: 0x888888,
+        color: 0x555555,
         transparent: true,
         opacity: 0.1, // Slightly opaque
         side: THREE.BackSide, // Render inside faces
@@ -642,6 +649,7 @@
       });
       const boundingBoxEdges = new THREE.LineSegments(edges, edgeMaterial);
       boundingBoxEdges.userData.isGameObject = true; // Mark as game object
+      boundingBoxEdges.scale.set(0.999, 0.999, 0.999)
       scene.add(boundingBoxEdges);
     }
 
@@ -653,7 +661,7 @@
 
       // Create Target Balls
       for (let i = 0; i < settings.level; i++) {
-        const ball = createBall(0x87CEEB); // Sky blue ball
+        const ball = createBall(DEFAULT_BALL_COLOR); // Sky blue ball
 
         // Random non-overlapping position
         setNonOverlappingPosition(ball, positions);
@@ -665,7 +673,7 @@
 
       // Create Blue Distractor Balls
       for (let i = 0; i < settings.numBlueDistractors; i++) {
-        const ball = createBall(0x87CEEB); // Sky blue ball
+        const ball = createBall(DEFAULT_BALL_COLOR); // Sky blue ball
 
         // Random non-overlapping position
         setNonOverlappingPosition(ball, positions);
@@ -677,7 +685,7 @@
 
       // Create Colored Distractor Balls
       for (let i = 0; i < settings.numColoredDistractors; i++) {
-        const color = getRandomColor([0x87CEEB, 0xff0000, 0xffff00]); // Exclude sky blue, red, yellow
+        const color = getRandomColor([DEFAULT_BALL_COLOR, 0xff0000, 0xffff00]); // Exclude sky blue, red, yellow
         const ball = createBall(color);
 
         // Random non-overlapping position
@@ -696,13 +704,16 @@
       const geometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
       const material = new THREE.MeshStandardMaterial({
         color: color,
-        metalness: 0.6,
+        metalness: 0.25,
         roughness: 0.65,
         emissive: "#FFFFFF",
         emissiveIntensity: 0.1,
         transparent: true,
         opacity: settings.ballOpacity,
+        map: ballTexture,
+        normalMap: ballNormalTexture,
       });
+
       const ball = new THREE.Mesh(geometry, material);
       ball.castShadow = true;
       ball.receiveShadow = true;
@@ -835,13 +846,13 @@
       function highlightAllBalls(callback) {
         isSequenceShowing = true;
         for (const object of highlightSequence) {
-          object.ball.material.color.set(0xff0000);
+          object.ball.material.color.set(0xff6633);
           object.ball.userData.isCurrentlyHighlighted = true;
           addNumberLabel(object.ball, object.number);
         }
         let timeout = setTimeout(() => {
           for (const object of highlightSequence) {
-            object.ball.material.color.set(0x87CEEB);
+            object.ball.material.color.set(DEFAULT_BALL_COLOR);
             object.ball.userData.isCurrentlyHighlighted = false; // Unmark as highlighted
             disposeLabel(object.ball);
             object.ball.remove(object.ball.userData.label);
@@ -858,7 +869,7 @@
         if (index > 0) {
           // Reset previous ball color
           const previous = highlightSequence[index - 1];
-          previous.ball.material.color.set(0x87CEEB);
+          previous.ball.material.color.set(DEFAULT_BALL_COLOR);
           previous.ball.userData.isCurrentlyHighlighted = false; // Unmark as highlighted
 
           // Remove label
@@ -882,7 +893,7 @@
           isSequenceShowing = false;
           // Reset last ball color and remove label
           const lastBall = highlightSequence[index - 1].ball;
-          lastBall.material.color.set(0x87CEEB);
+          lastBall.material.color.set(DEFAULT_BALL_COLOR);
           lastBall.userData.isCurrentlyHighlighted = false; // Unmark as highlighted
           disposeLabel(lastBall.userData.label);
           lastBall.remove(lastBall.userData.label);
@@ -1452,10 +1463,6 @@
 
     function updateGame() {
       setTimeout(() => updateGame(), 1000 / 60);
-      // Make spheres look at the camera
-      balls.forEach(ball => {
-        ball.lookAt(camera.position);
-      });
 
       // Update balls position
       if (!isUserTurn) {
