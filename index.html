@@ -199,61 +199,6 @@
     updateGame();
 
     function init() {
-      // Scene Setup
-      scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x202020); // Dark gray background
-      envMap = new THREE.TextureLoader().load('hdri.jpg', (texture) => {
-        texture.mapping = THREE.EquirectangularReflectionMapping;
-        texture.encoding = THREE.sRGBEncoding;
-      });
-      scene.environment = envMap;
-
-      // Camera Setup
-      camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-      camera.position.z = 60; // Set initial camera position
-
-      // Renderer Setup
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.shadowMap.enabled = true; // Enable shadow mapping
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      document.body.appendChild(renderer.domElement);
-
-      // Controls
-      controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.enableZoom = true;
-      controls.enableRotate = true;
-      controls.enablePan = true;
-
-      // Lighting
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-      scene.add(ambientLight);
-
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-      directionalLight.position.set(50, 50, 50);
-      directionalLight.castShadow = true;
-      directionalLight.shadow.mapSize.width = 1024;
-      directionalLight.shadow.mapSize.height = 1024;
-      directionalLight.shadow.camera.near = 0.5;
-      directionalLight.shadow.camera.far = 500;
-      scene.add(directionalLight);
-
-      const spotlight1 = new THREE.SpotLight(0xffffff, 0.6);
-      spotlight1.position.set(-50, 50, -50);
-      spotlight1.castShadow = true;
-      scene.add(spotlight1);
-
-      const spotlight2 = new THREE.SpotLight(0xffffff, 0.6);
-      spotlight2.position.set(50, -50, 50);
-      spotlight2.castShadow = true;
-      scene.add(spotlight2);
-
-      const pointLight = new THREE.PointLight(0xffffff, 0.5);
-      camera.add(pointLight);
-      scene.add(camera);
-
-      // GUI Setup
       defaultSettings = {
         level: 4,
         movementMode: 'Non-Rotating',
@@ -325,6 +270,61 @@
 
       loadSettings();
 
+      // Scene Setup
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x202020); // Dark gray background
+      envMap = new THREE.TextureLoader().load('hdri.jpg', (texture) => {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        texture.encoding = THREE.sRGBEncoding;
+      });
+      scene.environment = envMap;
+
+      // Camera Setup
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+      camera.position.z = settings.boxZ + 10; // Set initial camera position
+
+      // Renderer Setup
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true; // Enable shadow mapping
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      document.body.appendChild(renderer.domElement);
+
+      // Controls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.enableZoom = true;
+      controls.enableRotate = true;
+      controls.enablePan = true;
+
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      directionalLight.position.set(50, 50, 50);
+      directionalLight.castShadow = true;
+      directionalLight.shadow.mapSize.width = 1024;
+      directionalLight.shadow.mapSize.height = 1024;
+      directionalLight.shadow.camera.near = 0.5;
+      directionalLight.shadow.camera.far = 500;
+      scene.add(directionalLight);
+
+      const spotlight1 = new THREE.SpotLight(0xffffff, 0.6);
+      spotlight1.position.set(-50, 50, -50);
+      spotlight1.castShadow = true;
+      scene.add(spotlight1);
+
+      const spotlight2 = new THREE.SpotLight(0xffffff, 0.6);
+      spotlight2.position.set(50, -50, 50);
+      spotlight2.castShadow = true;
+      scene.add(spotlight2);
+
+      const pointLight = new THREE.PointLight(0xffffff, 0.5);
+      camera.add(pointLight);
+      scene.add(camera);
+
+      // GUI Setup
       gui = new dat.GUI({ autoPlace: false });
       document.getElementById('gui-container').appendChild(gui.domElement);
 
