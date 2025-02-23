@@ -312,7 +312,8 @@
         everyCorrectDelayAfter: 1,
         delayAfterChangeByIncorrect: 0,
         everyIncorrectDelayAfter: 1,
-        trialStartDelay: 2000,
+        trialStartDelay: 500,
+        trialEndDelay: 2000,
       };
 
       settings = {
@@ -430,6 +431,7 @@
       resetFolder.add(settings, 'resetApp').name('Reset to default');
 
       gui.add(settings, 'trialStartDelay').name('Trial Start Delay (ms)');
+      gui.add(settings, 'trialEndDelay').name('Trial End Delay (ms)');
 
       // Add "Start Game" button at the end
       gui.add(settings, 'startGame').name('Start Game');
@@ -531,7 +533,7 @@
       createBalls();
 
       // Start Sequence
-      let timeout = setTimeout(highlightTargetBalls, 1000);
+      let timeout = setTimeout(highlightTargetBalls, settings.trialStartDelay);
       activeTimeouts.push(timeout);
 
       // Start Flash Mode if enabled
@@ -1087,7 +1089,7 @@
             // Save trial data
             saveTrialData(settings.level);
 
-            let timeout = setTimeout(startGame, settings.trialStartDelay);
+            let timeout = setTimeout(startGame, settings.trialEndDelay);
             activeTimeouts.push(timeout);
             return; // We exit here, skipping the rest of checkUserSequence
           } else {
@@ -1109,7 +1111,7 @@
             // Save trial data
             saveTrialData(trialScores[trialScores.length - 1]);
 
-            let timeout = setTimeout(startGame, settings.trialStartDelay);
+            let timeout = setTimeout(startGame, settings.trialEndDelay);
             activeTimeouts.push(timeout);
             return; // Done
           }
@@ -1152,7 +1154,7 @@
       // Save trial data
       saveTrialData(trialScore);
 
-      let timeout = setTimeout(startGame, settings.trialStartDelay);
+      let timeout = setTimeout(startGame, settings.trialEndDelay);
       activeTimeouts.push(timeout);
     }
 
@@ -1172,7 +1174,7 @@
       // Save trial data
       saveTrialData(trialScore);
 
-      let timeout = setTimeout(startGame, settings.trialStartDelay);
+      let timeout = setTimeout(startGame, settings.trialEndDelay);
       activeTimeouts.push(timeout);
     }
 
