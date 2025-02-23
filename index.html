@@ -114,6 +114,17 @@
       pointer-events: none;
       opacity: 0.5;
     }
+
+    .dg #big-button {
+      height: 36px;
+    }
+
+    .dg #big-button .property-name {
+      white-space: nowrap;
+      width: 100%;
+      font-size: 20px;
+      padding: 6px;
+    }
   </style>
 </head>
 <body>
@@ -448,7 +459,8 @@
       gui.add(settings, 'trialEndDelay').name('Trial End Delay (ms)');
 
       // Add "Start Game" button at the end
-      gui.add(settings, 'startGame').name('Restart Game');
+      const restartGameButton = gui.add(settings, 'startGame').name('Restart Game');
+      restartGameButton.domElement.parentElement.parentElement.id = 'big-button';
 
       // Event Listeners
       window.addEventListener('resize', onWindowResize, false);
