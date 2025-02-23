@@ -255,8 +255,8 @@
 
       // GUI Setup
       defaultSettings = {
-        level: 2,
-        movementMode: 'Combination',
+        level: 4,
+        movementMode: 'Non-Rotating',
         verticalRotationGroups: 2,
         horizontalRotationGroups: 2,
         rotationSpeed: 0.01,
@@ -265,15 +265,15 @@
         isNonConsecutiveMode: true,
         autoProgression: true,
         showAnswers: true,
-        isRegular3DMOT: false,
-        numBlueDistractors: 5,
-        numColoredDistractors: 5,
-        ballSpeed: 0.1,
-        ballOpacity: 1.0,
-        boxX: 50,
+        isRegular3DMOT: true,
+        numBlueDistractors: 7,
+        numColoredDistractors: 0,
+        ballSpeed: 0.3,
+        ballOpacity: 0.9,
+        boxX: 60,
         boxY: 50,
-        boxZ: 50,
-        screenRotation: true,
+        boxZ: 30,
+        screenRotation: false,
         screenRotationSpeed: 0.002,
         screenRotationDistance: 60,
         rotateX: true,
@@ -281,10 +281,10 @@
         rotateZ: true,
         varyRotationDistance: false,
         highlightDuration: 1000,
-        highlightSimultaneously: false,
-        delayAfterSequence: 1000,
+        highlightSimultaneously: true,
+        delayAfterSequence: 6000,
         numberSize: 3,
-        dotSize: 5, // Center Dot Size
+        dotSize: 7, // Center Dot Size
         blinkDot: false,
         // Flash Mode settings
         flashMode: false,
@@ -294,14 +294,14 @@
         intervalDurationMax: 3000,
         // Auto Progression settings
         // Level adjustment
-        levelChangeByCorrect: 1,
+        levelChangeByCorrect: 0,
         everyCorrectLevel: 1,
-        levelChangeByIncorrect: -1,
+        levelChangeByIncorrect: 0,
         everyIncorrectLevel: 1,
         // Ball Speed adjustment
-        ballSpeedChangeByCorrect: 0,
+        ballSpeedChangeByCorrect: 0.01,
         everyCorrectBallSpeed: 1,
-        ballSpeedChangeByIncorrect: 0,
+        ballSpeedChangeByIncorrect: -0.01,
         everyIncorrectBallSpeed: 1,
         // Highlight Duration adjustment
         highlightDurationChangeByCorrect: 0,
@@ -314,7 +314,7 @@
         delayAfterChangeByIncorrect: 0,
         everyIncorrectDelayAfter: 1,
         trialStartDelay: 500,
-        trialEndDelay: 2000,
+        trialEndDelay: 1200,
       };
 
       settings = {
