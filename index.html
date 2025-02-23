@@ -213,11 +213,11 @@
         isRegular3DMOT: true,
         numBlueDistractors: 7,
         numColoredDistractors: 0,
-        ballSpeed: 0.3,
+        ballSpeed: 0.35,
         ballOpacity: 0.9,
-        boxX: 60,
-        boxY: 50,
-        boxZ: 30,
+        boxX: 50,
+        boxY: 40,
+        boxZ: 25,
         screenRotation: false,
         screenRotationSpeed: 0.002,
         screenRotationDistance: 60,
@@ -229,8 +229,8 @@
         highlightSimultaneously: true,
         delayAfterSequence: 6000,
         numberSize: 3,
-        dotSize: 7, // Center Dot Size
-        blinkDot: false,
+        dotSize: 12, // Center Dot Size
+        blinkDot: true,
         // Flash Mode settings
         flashMode: false,
         flashDurationMin: 160,
@@ -281,7 +281,7 @@
 
       // Camera Setup
       camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-      camera.position.z = settings.boxZ + 10; // Set initial camera position
+      camera.position.z = settings.boxZ + 15; // Set initial camera position
 
       // Renderer Setup
       renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -629,7 +629,7 @@
         side: THREE.BackSide, // Render inside faces
       });
       const box = new THREE.Mesh(geometry, material);
-      box.receiveShadow = true;
+      box.receiveShadow = false;
       box.userData.isGameObject = true; // Mark as game object
       scene.add(box);
 
