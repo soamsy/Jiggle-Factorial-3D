@@ -149,6 +149,7 @@
   <script>
 
     // Global Variables
+    const BALL_RADIUS = 1.5;
     const sessionId = Date.now();
     let scene, camera, renderer, controls;
     let envMap;
@@ -692,7 +693,7 @@
     }
 
     function createBall(color) {
-      const geometry = new THREE.SphereGeometry(1.5, 32, 32);
+      const geometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
       const material = new THREE.MeshStandardMaterial({
         color: color,
         metalness: 0.6,
@@ -717,7 +718,7 @@
         isFlashing: false
       };
 
-      const outlineGeometry = new THREE.SphereGeometry(1.5 + 0.12, 32, 32);
+      const outlineGeometry = new THREE.SphereGeometry(BALL_RADIUS + 0.12, 32, 32);
       const outlineMaterial = new THREE.MeshBasicMaterial({
         color: 0x000000,
         side: THREE.BackSide,
@@ -1560,12 +1561,51 @@
         for (let j = i + 1; j < balls.length; j++) {
           const ball1 = balls[i];
           const ball2 = balls[j];
-          const distance = ball1.position.distanceTo(ball2.position);
-          if (distance < 3) {
-            // Simple collision response
-            const temp = ball1.userData.velocity.clone();
-            ball1.userData.velocity.copy(ball2.userData.velocity);
-            ball2.userData.velocity.copy(temp);
+
+          const pos1 = ball1.position;
+          const pos2 = ball2.position;
+
+          const distance = pos1.distanceTo(pos2);
+          const minDist = 2 * (BALL_RADIUS + 0.2); // Sum of ball radius
+
+          if (distance < minDist) {
+            // Collision normal
+            const normal = pos1.clone().sub(pos2).normalize();
+
+            // Velocities
+            const v1 = ball1.userData.velocity;
+            const v2 = ball2.userData.velocity;
+
+            // Compute velocity along the normal
+            const v1n = normal.clone().multiplyScalar(v1.dot(normal));
+            const v2n = normal.clone().multiplyScalar(v2.dot(normal));
+
+            // Compute velocity along the tangent (which stays unchanged)
+            const v1t = v1.clone().sub(v1n);
+            const v2t = v2.clone().sub(v2n);
+
+            // Compute total kinetic energy in the normal direction
+            const v1nMag = v1n.length();
+            const v2nMag = v2n.length();
+            const totalEnergy = v1nMag ** 2 + v2nMag ** 2; // Squared speeds (energy)
+
+            // Compute new normal speeds while keeping total energy the same
+            const avgSpeed = Math.sqrt(totalEnergy / 2); // Each gets a balanced share
+            const v1nAfter = normal.clone().multiplyScalar(avgSpeed * Math.sign(v2n.dot(normal)));
+            const v2nAfter = normal.clone().multiplyScalar(avgSpeed * Math.sign(v1n.dot(normal)));
+
+            // Compute final velocities
+            const v1Final = v1t.add(v1nAfter);
+            const v2Final = v2t.add(v2nAfter);
+
+            // Update velocities
+            ball1.userData.velocity.copy(v1Final);
+            ball2.userData.velocity.copy(v2Final);
+
+            // Move balls apart to prevent overlap
+            const overlap = (minDist - distance) / 2;
+            ball1.position.add(normal.clone().multiplyScalar(overlap));
+            ball2.position.sub(normal.clone().multiplyScalar(overlap));
           }
         }
       }
