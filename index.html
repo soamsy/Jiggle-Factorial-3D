@@ -1233,14 +1233,23 @@
       averageDisplayElement.firstChild.textContent = `Avg Score: ${averageScore.toFixed(2)} | Avg Accuracy: ${averageAccuracy.toFixed(2)}%`;
     }
 
-    function saveDailyProgress(trialScore) {
-      const today = new Date().toISOString().split('T')[0];
-      const progressData = JSON.parse(localStorage.getItem('progressData')) || [];
-
-      // Calculate average score and accuracy
+    function calculateScores() {
       const totalScore = trialScores.reduce((a, b) => a + b, 0);
       const averageScore = totalScore / trialScores.length;
       const averageAccuracy = (cumulativeCorrectSelections / cumulativeTotalTargets) * 100;
+      return [totalScore, averageScore, averageAccuracy];
+    }
+
+    function saveDailyProgress(trialScore) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
+      const progressData = JSON.parse(localStorage.getItem('progressData')) || [];
+
+      // Calculate average score and accuracy
+      let [totalScore, averageScore, averageAccuracy] = calculateScores();
 
       // Check if data for today already exists
       const todayDataIndex = progressData.findIndex(data => data.date === today);
@@ -1295,6 +1304,8 @@
 
       } else {
         // Add new data
+        trialScores.splice(0, trialScores.length - 1);
+        [totalScore, averageScore, averageAccuracy] = calculateScores();
         progressData.push({
         date: today,
         sessions: [{
