@@ -347,6 +347,10 @@
       const textureLoader = new THREE.TextureLoader();
       ballTexture = textureLoader.load('texture.jpg');
       ballNormalTexture = textureLoader.load('normal.jpg');
+      ballTexture.repeat.set(0.5, 0.5);
+      ballNormalTexture.repeat.set(0.5, 0.5);
+      ballTexture.offset.set(0.31, 0.0);
+      ballNormalTexture.offset.set(0.31, 0.0);
 
       gui = new dat.GUI({ autoPlace: false });
       document.getElementById('gui-container').appendChild(gui.domElement);
