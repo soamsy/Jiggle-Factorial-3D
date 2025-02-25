@@ -282,6 +282,7 @@
         trialStartDelay: 500,
         trialEndDelay: 1200,
         use3DGlasses: false,
+        fov: 75,
       };
 
       settings = {
@@ -404,6 +405,10 @@
       gui.add(settings, 'boxX').name('Box Width');
       gui.add(settings, 'boxY').name('Box Height');
       gui.add(settings, 'boxZ').name('Box Depth');
+      gui.add(settings, 'fov').min(40).max(120).name('FOV').onChange((value) => {
+        camera.fov = value;
+        camera.updateProjectionMatrix();
+      });
       gui.add(settings, 'ballOpacity').min(0.5).max(1.0).name('Ball Opacity');
 
       const screenRotationFolder = gui.addFolder('Screen Rotation');
