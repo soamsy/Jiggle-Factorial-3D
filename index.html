@@ -167,7 +167,7 @@
 
     // Global Variables
     const BALL_RADIUS = 1.5;
-    const DEFAULT_BALL_COLOR = '#FFEEAA';
+    const DEFAULT_BALL_COLOR = '#F4DDCC';
     const sessionId = Date.now();
     let scene, camera, renderer, controls, anaglyphEffect;
     let envMap;
@@ -736,7 +736,7 @@
       const geometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
       const material = new THREE.MeshStandardMaterial({
         color: color,
-        metalness: 0.25,
+        metalness: 0.65,
         roughness: 0.65,
         emissive: "#FFFFFF",
         emissiveIntensity: 0.05,
@@ -878,7 +878,7 @@
       function highlightAllBalls(callback) {
         isSequenceShowing = true;
         for (const object of highlightSequence) {
-          object.ball.material.color.set(0xff6633);
+          object.ball.material.color.set(0xffaa00);
           object.ball.userData.isCurrentlyHighlighted = true;
           addNumberLabel(object.ball, object.number);
         }
