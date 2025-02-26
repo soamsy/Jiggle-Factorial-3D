@@ -402,9 +402,9 @@
       gui.add(settings, 'numBlueDistractors').name('# Blue Distractors');
       gui.add(settings, 'numColoredDistractors').name('# Colored Distractors');
       gui.add(settings, 'ballSpeed').name('Ball Speed');
-      gui.add(settings, 'boxX').name('Box Width');
-      gui.add(settings, 'boxY').name('Box Height');
-      gui.add(settings, 'boxZ').name('Box Depth');
+      gui.add(settings, 'boxX').min(1).max(100).name('Box Width');
+      gui.add(settings, 'boxY').min(1).max(100).name('Box Height');
+      gui.add(settings, 'boxZ').min(1).max(100).name('Box Depth');
       gui.add(settings, 'fov').min(40).max(120).name('FOV').onChange((value) => {
         camera.fov = value;
         camera.updateProjectionMatrix();
