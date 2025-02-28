@@ -458,12 +458,23 @@
       // Scene Setup
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x202020); // Dark gray background
+
+      let loadCount = 0;
+      const afterLoad = () => {
+        if (loadCount < 2) {
+          return;
+        }
+        startGame();
+      }
       const loader = new EXRLoader();
       loader.load("hdri.exr", (texture) => {
           texture.mapping = THREE.EquirectangularReflectionMapping;
           scene.environment = texture;
           envMap = texture;
+          loadCount += 1;
+          afterLoad();
       });
+
 
       // Camera Setup
       const aspect = window.innerWidth/window.innerHeight;
@@ -682,12 +693,12 @@
       const fontLoader = new FontLoader();
       fontLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function(font) {
         loadedFont = font;
-        // Start the game after the font has loaded
-        startGame();
+        loadCount += 1;
+        afterLoad();
       }, undefined, function(err) {
         console.error('An error happened loading the font:', err);
-        // Proceed to start the game even if font loading fails
-        startGame();
+        loadCount += 1;
+        afterLoad();
       });
 
       // Initialize the center dot
