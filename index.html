@@ -98,6 +98,32 @@
       animation: fadeInOut 2s infinite;
     }
 
+    #center-dot.anaglyph {
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    #center-dot.anaglyph::before,
+    #center-dot.anaglyph::after {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+    }
+
+    #center-dot.anaglyph::before {
+      background-color: red;
+      transform: translateX(-15%); /* Shift for left eye */
+      mix-blend-mode: screen;
+    }
+
+    #center-dot.anaglyph::after {
+      background-color: cyan;
+      transform: translateX(15%); /* Shift for right eye */
+      mix-blend-mode: screen;
+    }
+
     @keyframes fadeInOut {
       0%, 100% {
         opacity: 0.3;
@@ -161,10 +187,143 @@
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { AnaglyphEffect } from 'three/addons/effects/AnaglyphEffect.js';
+    import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
     import { FontLoader } from 'three/addons/loaders/FontLoader.js';
     import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+    import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
 
+    // I copied this entire class because I need to replace colorMatrixLeft and colorMatrixRight
+    // with matrices that actually preserve color for 3D glasses. I do not know why three js
+    // has such a bad default.
+    //
+    // I generated the matrix values with https://tschw.github.io/angler.js/app/frames/main.html
+    class AnaglyphEffect {
+    	constructor( renderer, disparity, width = 512, height = 512 ) {
+
+
+    		this.colorMatrixLeft = new THREE.Matrix3().fromArray( [
+          0.7762762904167175,-0.0017037560464814305,-0.000020098639652132988,0.16620422899723053,0.0006450785440392792,-0.0008379360078833997,0.15850535035133362,-0.000686841260176152,0.0002758795744739473,
+    		] );
+
+    		this.colorMatrixRight = new THREE.Matrix3().fromArray( [
+          -0.006647571921348572,0.06735259294509888,0.09600840508937836,-0.09514870494604111,0.941753089427948,-0.06426528096199036,0.0008104303269647062,-0.007360187824815512,0.9688390493392944,
+    		] );
+
+    		this._stereo = new THREE.StereoCamera();
+        this._stereo.eyeSep = disparity;
+
+    		const _params = { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter, format: THREE.RGBAFormat };
+
+    		const _renderTargetL = new THREE.WebGLRenderTarget( width, height, _params );
+    		const _renderTargetR = new THREE.WebGLRenderTarget( width, height, _params );
+
+    		const _material = new THREE.ShaderMaterial( {
+
+    			uniforms: {
+
+    				'mapLeft': { value: _renderTargetL.texture },
+    				'mapRight': { value: _renderTargetR.texture },
+
+    				'colorMatrixLeft': { value: this.colorMatrixLeft },
+    				'colorMatrixRight': { value: this.colorMatrixRight }
+
+    			},
+
+    			vertexShader: [
+
+    				'varying vec2 vUv;',
+
+    				'void main() {',
+
+    				'	vUv = vec2( uv.x, uv.y );',
+    				'	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );',
+
+    				'}'
+
+    			].join( '\n' ),
+
+    			fragmentShader: [
+
+    				'uniform sampler2D mapLeft;',
+    				'uniform sampler2D mapRight;',
+    				'varying vec2 vUv;',
+
+    				'uniform mat3 colorMatrixLeft;',
+    				'uniform mat3 colorMatrixRight;',
+
+    				'void main() {',
+
+    				'	vec2 uv = vUv;',
+
+    				'	vec4 colorL = texture2D( mapLeft, uv );',
+    				'	vec4 colorR = texture2D( mapRight, uv );',
+
+    				'	vec3 color = clamp(',
+    				'			colorMatrixLeft * colorL.rgb +',
+    				'			colorMatrixRight * colorR.rgb, 0., 1. );',
+
+    				'	gl_FragColor = vec4(',
+    				'			color.r, color.g, color.b,',
+    				'			max( colorL.a, colorR.a ) );',
+
+    				'	#include <tonemapping_fragment>',
+    				'	color = pow(color, vec3(1.0 / 2.2));',
+
+    				'}'
+
+    			].join( '\n' )
+
+    		} );
+
+    		const _quad = new FullScreenQuad( _material );
+
+    		this.setSize = function ( width, height ) {
+
+    			renderer.setSize( width, height );
+
+    			const pixelRatio = renderer.getPixelRatio();
+
+    			_renderTargetL.setSize( width * pixelRatio, height * pixelRatio );
+    			_renderTargetR.setSize( width * pixelRatio, height * pixelRatio );
+
+    		};
+
+    		this.render = function ( scene, camera ) {
+
+    			const currentRenderTarget = renderer.getRenderTarget();
+
+    			if ( scene.matrixWorldAutoUpdate === true ) scene.updateMatrixWorld();
+
+    			if ( camera.parent === null && camera.matrixWorldAutoUpdate === true ) camera.updateMatrixWorld();
+
+    			this._stereo.update( camera );
+
+    			renderer.setRenderTarget( _renderTargetL );
+    			renderer.clear();
+    			renderer.render( scene, this._stereo.cameraL );
+
+    			renderer.setRenderTarget( _renderTargetR );
+    			renderer.clear();
+    			renderer.render( scene, this._stereo.cameraR );
+
+    			renderer.setRenderTarget( null );
+    			_quad.render( renderer );
+
+    			renderer.setRenderTarget( currentRenderTarget );
+
+    		};
+
+    		this.dispose = function () {
+
+    			_renderTargetL.dispose();
+    			_renderTargetR.dispose();
+
+    			_material.dispose();
+    			_quad.dispose();
+
+    		};
+    	}
+    }
     // Global Variables
     const BALL_RADIUS = 1.5;
     const DEFAULT_BALL_COLOR = '#F4DDCC';
@@ -236,9 +395,11 @@
         numColoredDistractors: 0,
         ballSpeed: 0.35,
         ballOpacity: 0.92,
+        ballMetalness: 0.7,
+        ballRoughness: 0.40,
         boxX: 45,
-        boxY: 35,
-        boxZ: 20,
+        boxY: 30,
+        boxZ: 25,
         screenRotation: false,
         screenRotationSpeed: 0.002,
         screenRotationDistance: 60,
@@ -282,6 +443,7 @@
         trialStartDelay: 500,
         trialEndDelay: 1200,
         use3DGlasses: false,
+        disparity: 0.15,
         fov: 75,
       };
 
@@ -296,21 +458,27 @@
       // Scene Setup
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x202020); // Dark gray background
-      envMap = new THREE.TextureLoader().load('hdri.jpg', (texture) => {
-        texture.mapping = THREE.EquirectangularReflectionMapping;
-        texture.encoding = THREE.sRGBEncoding;
+      const loader = new EXRLoader();
+      loader.load("hdri.exr", (texture) => {
+          texture.mapping = THREE.EquirectangularReflectionMapping;
+          scene.environment = texture;
+          envMap = texture;
       });
-      scene.environment = envMap;
 
       // Camera Setup
-      camera = new THREE.PerspectiveCamera(settings.fov, window.innerWidth/window.innerHeight, 0.1, 1000);
-      camera.position.z = settings.boxZ + 12; // Set initial camera position
+      const aspect = window.innerWidth/window.innerHeight;
+      camera = new THREE.PerspectiveCamera(settings.fov, aspect, 0.01, 1000);
+      const fovRad = THREE.MathUtils.degToRad(settings.fov) * aspect;
+      const requiredZ = (settings.boxY) / Math.tan(fovRad / 2);
+      camera.position.z = settings.boxZ + requiredZ;
 
       // Renderer Setup
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.shadowMap.enabled = true; // Enable shadow mapping
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.0;
       document.body.appendChild(renderer.domElement);
 
       // Controls
@@ -347,7 +515,7 @@
       camera.add(pointLight);
       scene.add(camera);
 
-      anaglyphEffect = new AnaglyphEffect(renderer);
+      anaglyphEffect = new AnaglyphEffect(renderer, settings.disparity);
       anaglyphEffect.setSize(window.innerWidth, window.innerHeight);
 
       const textureLoader = new THREE.TextureLoader();
@@ -401,7 +569,7 @@
       gui.add(settings, 'showAnswers').name('Show Answers');
       gui.add(settings, 'numBlueDistractors').name('# Blue Distractors');
       gui.add(settings, 'numColoredDistractors').name('# Colored Distractors');
-      gui.add(settings, 'ballSpeed').name('Ball Speed');
+      gui.add(settings, 'ballSpeed').min(0).name('Ball Speed');
       gui.add(settings, 'boxX').min(1).max(100).name('Box Width');
       gui.add(settings, 'boxY').min(1).max(100).name('Box Height');
       gui.add(settings, 'boxZ').min(1).max(100).name('Box Depth');
@@ -409,7 +577,10 @@
         camera.fov = value;
         camera.updateProjectionMatrix();
       });
-      gui.add(settings, 'ballOpacity').min(0.5).max(1.0).name('Ball Opacity');
+      const ballAppearanceFolder = gui.addFolder('Ball Appearance');
+      ballAppearanceFolder.add(settings, 'ballOpacity').min(0.5).max(1.0).name('Ball Opacity').onChange(updateBallAppearance);
+      ballAppearanceFolder.add(settings, 'ballRoughness').min(0.0).max(1.0).name('Ball Roughness').onChange(updateBallAppearance);
+      ballAppearanceFolder.add(settings, 'ballMetalness').min(0.0).max(1.0).name('Ball Metalness').onChange(updateBallAppearance);
 
       const screenRotationFolder = gui.addFolder('Screen Rotation');
       screenRotationFolder.add(settings, 'screenRotation').name('Enable');
@@ -428,7 +599,10 @@
       // Add Center Dot Size Controller
       gui.add(settings, 'dotSize').name('Center Dot Size').min(0).onChange(updateCenterDot);
       gui.add(settings, 'blinkDot').name('Make Dot Blink').onChange(updateCenterDot);
-      gui.add(settings, 'use3DGlasses').name('Use 3D Glasses');
+      gui.add(settings, 'use3DGlasses').name('Use 3D Glasses').onChange(updateCenterDot);
+      gui.add(settings, 'disparity').name('3D Disparity').min(0).max(0.5).onChange((val) => {
+        anaglyphEffect._stereo.eyeSep = val;
+      });
 
       // Flash Mode GUI
       const flashModeFolder = gui.addFolder('Flash Mode Settings');
@@ -535,6 +709,12 @@
         centerDotElement.classList.add('blink');
       } else {
         centerDotElement.classList.remove('blink');
+      }
+
+      if (settings.use3DGlasses) {
+        centerDotElement.classList.add('anaglyph');
+      } else {
+        centerDotElement.classList.remove('anaglyph');
       }
     }
 
@@ -664,7 +844,7 @@
       const material = new THREE.MeshPhongMaterial({
         color: 0x555555,
         transparent: true,
-        opacity: 0.1, // Slightly opaque
+        opacity: 0.2, // Slightly opaque
         side: THREE.BackSide, // Render inside faces
       });
       const box = new THREE.Mesh(geometry, material);
@@ -681,7 +861,7 @@
       });
       const boundingBoxEdges = new THREE.LineSegments(edges, edgeMaterial);
       boundingBoxEdges.userData.isGameObject = true; // Mark as game object
-      boundingBoxEdges.scale.set(0.999, 0.999, 0.999)
+      boundingBoxEdges.scale.set(0.998, 0.998, 0.998)
       scene.add(boundingBoxEdges);
     }
 
@@ -732,12 +912,20 @@
       assignMovement();
     }
 
+    function updateBallAppearance() {
+      for (const ball of balls) {
+        ball.material.metalness = (settings.ballMetalness);
+        ball.material.roughness = (settings.ballRoughness);
+        ball.material.opacity = (settings.ballOpacity);
+      }
+    }
+
     function createBall(color) {
       const geometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
       const material = new THREE.MeshStandardMaterial({
         color: color,
-        metalness: 0.65,
-        roughness: 0.65,
+        metalness: settings.ballMetalness,
+        roughness: settings.ballRoughness,
         emissive: "#FFFFFF",
         emissiveIntensity: 0.05,
         transparent: true,
@@ -878,7 +1066,7 @@
       function highlightAllBalls(callback) {
         isSequenceShowing = true;
         for (const object of highlightSequence) {
-          object.ball.material.color.set(0xffaa00);
+          object.ball.material.color.set(0xff8800);
           object.ball.userData.isCurrentlyHighlighted = true;
           addNumberLabel(object.ball, object.number);
         }
@@ -1094,7 +1282,7 @@
           }
         } else {
           // Player selected a distractor ball
-          parentBall.material.color.set(0xff0000); // Turn red
+          parentBall.material.color.set(0xff0022); // Turn red
           mistakeMade = true;
         }
 
@@ -1486,7 +1674,7 @@
           target.ball.userData.label = null;
         }
         if (!userSequence.includes(target.ball))
-          target.ball.material.color.set(0x00ff00); // Turn green
+          target.ball.material.color.set(0x00ff22); // Turn green
         addNumberLabel(target.ball, i + 1); // Add number label
       }
     }
