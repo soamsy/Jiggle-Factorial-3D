@@ -355,6 +355,11 @@
     let isGameStarting = false; // Prevent multiple initializations
     let flashModeTimeouts = []; // To store timeouts related to Flash Mode
     let mistakeMade = false; // Flag to track if a mistake has been made
+    let boundingBox;
+    let wallTexture1;
+    let wallNormal1;
+    let wallTexture2;
+    let wallNormal2;
 
     // New variables for score tracking
     let totalTrials = 0;
@@ -397,6 +402,7 @@
         ballOpacity: 0.92,
         ballMetalness: 0.7,
         ballRoughness: 0.40,
+        boxTexture: 'Gray',
         boxX: 45,
         boxY: 30,
         boxZ: 25,
@@ -588,10 +594,11 @@
         camera.fov = value;
         camera.updateProjectionMatrix();
       });
-      const ballAppearanceFolder = gui.addFolder('Ball Appearance');
+      const ballAppearanceFolder = gui.addFolder('Ball/Box Appearance');
       ballAppearanceFolder.add(settings, 'ballOpacity').min(0.5).max(1.0).name('Ball Opacity').onChange(updateBallAppearance);
       ballAppearanceFolder.add(settings, 'ballRoughness').min(0.0).max(1.0).name('Ball Roughness').onChange(updateBallAppearance);
       ballAppearanceFolder.add(settings, 'ballMetalness').min(0.0).max(1.0).name('Ball Metalness').onChange(updateBallAppearance);
+      ballAppearanceFolder.add(settings, 'boxTexture', ['Gray', 'Black', 'Wall 1', 'Wall 2']).name('Box Walls').onChange(updateBoxAppearance);
 
       const screenRotationFolder = gui.addFolder('Screen Rotation');
       screenRotationFolder.add(settings, 'screenRotation').name('Enable');
@@ -665,7 +672,8 @@
       window.addEventListener('resize', onWindowResize, false);
       renderer.domElement.addEventListener('pointerdown', onDocumentMouseDown, false);
 
-      gui.__controllers.forEach(controller => {
+      const subControllers = Object.values(gui.__folders).flatMap(folder => folder.__controllers);
+      [...gui.__controllers, ...subControllers].forEach(controller => {
         const originalOnChange = controller.__onChange;
         controller.onChange((value) => {
           if (originalOnChange)
@@ -833,8 +841,9 @@
     }
 
     function repopulateGui() {
-      gui.__controllers.forEach(controller => {
-        controller.updateDisplay();
+      gui.__controllers.forEach(controller => controller.updateDisplay());
+      Object.values(gui.__folders).forEach(folder => {
+        folder.__controllers.forEach(controller => controller.updateDisplay());
       });
     }
 
@@ -853,7 +862,7 @@
       // Create the solid box with slightly opaque walls
       const geometry = new THREE.BoxGeometry(boxX, boxY, boxZ);
       const material = new THREE.MeshPhongMaterial({
-        color: 0x555555,
+        color: 0x444444,
         transparent: true,
         opacity: 0.1, // Slightly opaque
         side: THREE.BackSide, // Render inside faces
@@ -862,6 +871,8 @@
       box.receiveShadow = false;
       box.userData.isGameObject = true; // Mark as game object
       scene.add(box);
+      boundingBox = box;
+      updateBoxAppearance();
 
       // Add thin white edges to the box
       const edges = new THREE.EdgesGeometry(geometry);
@@ -875,6 +886,57 @@
       boundingBoxEdges.scale.set(0.998, 0.998, 0.998)
       scene.add(boundingBoxEdges);
     }
+
+    function repeatTexture(texture, x, y) {
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(x, y);
+    }
+
+    function updateBoxAppearance() {
+      boundingBox.material.map = null;
+      boundingBox.material.normalMap = null;
+      boundingBox.material.color.set('#444444');
+      boundingBox.material.opacity = 0.1;
+      boundingBox.material.needsUpdate = true;
+      boundingBox.material.metalness = null;
+      boundingBox.material.roughness = null;
+      switch (settings.boxTexture) {
+        case 'Wall 1':
+          if (!wallTexture1) {
+            const loader = new THREE.TextureLoader();
+            wallTexture1 = loader.load('textures/wall1_color.jpg');
+            wallNormal1 = loader.load('textures/wall1_normal.jpg');
+          }
+          boundingBox.material.map = wallTexture1;
+          boundingBox.material.normalMap = wallNormal1;
+          boundingBox.material.color.set(null);
+          boundingBox.material.opacity = 0.9;
+          break;
+        case 'Wall 2':
+          if (!wallTexture2) {
+            const loader = new THREE.TextureLoader();
+            wallTexture2 = loader.load('textures/wall2_color.jpg');
+            wallNormal2 = loader.load('textures/wall2_normal.jpg');
+            repeatTexture(wallTexture2, 2, 2);
+            repeatTexture(wallNormal2, 2, 2);
+          }
+          boundingBox.material.map = wallTexture2;
+          boundingBox.material.normalMap = wallNormal2;
+          boundingBox.material.color.set("#555555");
+          boundingBox.material.opacity = 0.8;
+          boundingBox.material.metalness = 0.9;
+          boundingBox.material.roughness = 0.1;
+          break;
+        case 'Black':
+          boundingBox.material.color.set('#000000');
+          boundingBox.material.opacity = 0.9;
+          break;
+        default:
+          break;
+      }
+    }
+
 
     function createBalls() {
       const totalBalls = settings.level + settings.numBlueDistractors + settings.numColoredDistractors;
