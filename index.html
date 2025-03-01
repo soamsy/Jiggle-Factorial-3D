@@ -461,8 +461,6 @@
 
       loadSettings();
 
-      clock = new THREE.Clock();
-      delta = 0;
       // Scene Setup
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x202020); // Dark gray background
@@ -742,6 +740,8 @@
     function startGame() {
       if (isGameStarting) return; // Prevent multiple initializations
       isGameStarting = true;
+      clock = new THREE.Clock();
+      delta = 0;
 
       // Disable the Start Game button
       gui.__controllers.forEach(controller => {
@@ -1764,7 +1764,7 @@
 
     function animate() {
       requestAnimationFrame(animate);
-      delta += clock.getDelta();
+      delta += clock ? clock.getDelta() : 0;
       while (delta > (1 / 60)) {
         updateGame();
         delta -= (1 / 60);
