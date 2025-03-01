@@ -328,7 +328,7 @@
     const BALL_RADIUS = 1.5;
     const DEFAULT_BALL_COLOR = '#F4DDCC';
     const sessionId = Date.now();
-    let scene, camera, renderer, controls, anaglyphEffect;
+    let scene, camera, renderer, controls, anaglyphEffect, clock, delta;
     let envMap;
     let gui;
     let balls = [];
@@ -461,6 +461,8 @@
 
       loadSettings();
 
+      clock = new THREE.Clock();
+      delta = 0;
       // Scene Setup
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x202020); // Dark gray background
@@ -1762,6 +1764,11 @@
 
     function animate() {
       requestAnimationFrame(animate);
+      delta += clock.getDelta();
+      while (delta > (1 / 60)) {
+        updateGame();
+        delta -= (1 / 60);
+      }
       controls.update();
       if (settings.use3DGlasses) {
         anaglyphEffect.render(scene, camera);
@@ -1771,8 +1778,6 @@
     }
 
     function updateGame() {
-      setTimeout(() => updateGame(), 1000 / 60);
-
       // Update balls position
       if (!isUserTurn) {
         updateBallPositions();
