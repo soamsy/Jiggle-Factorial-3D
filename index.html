@@ -133,6 +133,11 @@
       }
     }
 
+    #VRButton {
+      left: calc(100% - 200px) !important;
+      bottom: 50px !important;
+    }
+
     .dg.main {
       background: rgba(40, 40, 40, 0.8);
     }
@@ -191,6 +196,7 @@
     import { FontLoader } from 'three/addons/loaders/FontLoader.js';
     import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
     import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
+    import { VRButton } from 'three/addons/webxr/VRButton.js';
 
     // I copied this entire class because I need to replace colorMatrixLeft and colorMatrixRight
     // with matrices that actually preserve color for 3D glasses. I do not know why three js
@@ -379,8 +385,10 @@
     const graphPopup = document.getElementById('graph-popup');
     const closeGraphButton = document.getElementById('close-graph-button');
 
+    let vrButton;
+
     init();
-    animate();
+    renderer.setAnimationLoop(animate);
     updateGame();
 
     function init() {
@@ -497,6 +505,8 @@
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.0;
       document.body.appendChild(renderer.domElement);
+      renderer.xr.enabled = true;
+      document.body.appendChild(VRButton.createButton(renderer));
 
       // Controls
       controls = new OrbitControls(camera, renderer.domElement);
@@ -1763,7 +1773,6 @@
     }
 
     function animate() {
-      requestAnimationFrame(animate);
       delta += clock ? clock.getDelta() : 0;
       while (delta > (1 / 60)) {
         updateGame();
