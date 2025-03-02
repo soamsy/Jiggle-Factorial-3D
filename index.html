@@ -411,6 +411,7 @@
         screenRotation: false,
         screenRotationSpeed: 0.002,
         screenRotationDistance: 60,
+        answerFeedback: 'Immediate',
         rotateX: true,
         rotateY: true,
         rotateZ: true,
@@ -590,9 +591,6 @@
       screenRotationFolder.add(settings, 'rotateZ').name('Rotate Z');
       screenRotationFolder.add(settings, 'varyRotationDistance').name('Vary Distance');
 
-      gui.add(settings, 'highlightDuration').name('Highlight Duration');
-      gui.add(settings, 'highlightSimultaneously').name('Highlight Together');
-      gui.add(settings, 'delayAfterSequence').name('Delay After');
 
       // Add Center Dot Size Controller
       gui.add(settings, 'dotSize').name('Center Dot Size').min(0).onChange(updateCenterDot);
@@ -660,7 +658,11 @@
       const resetFolder = gui.addFolder('Reset App');
       resetFolder.add(settings, 'resetApp').name('Reset to default');
 
+      gui.add(settings, 'answerFeedback', ['Immediate', 'After Selection']).name('Feedback');
+      gui.add(settings, 'highlightSimultaneously').name('Highlight Together');
       gui.add(settings, 'trialStartDelay').name('Trial Start Delay (ms)');
+      gui.add(settings, 'highlightDuration').name('Highlight Duration');
+      gui.add(settings, 'delayAfterSequence').name('Delay After');
       gui.add(settings, 'trialEndDelay').name('Trial End Delay (ms)');
 
       // Add "Start Game" button at the end
@@ -1341,25 +1343,29 @@
         selectedBalls.push(parentBall);
         userSequence.push(parentBall);
 
-        if (targetBalls.includes(parentBall)) {
-          // Check if the selected ball is the correct one in the sequence
-          if (parentBall === targetSequence[userSequence.length - 1].ball && !mistakeMade) {
-            // Correct selection
+        const isTarget = targetBalls.includes(parentBall);
+        if (settings.isRegular3DMOT) {
+          if (isTarget) {
             parentBall.material.color.set(0xffff00); // Turn yellow
           } else {
-            // Wrong sequence but correct target ball
-            if (settings.isRegular3DMOT) {
-              parentBall.material.color.set(0xffff00); // bright yellow when out-of-order in 3D MOT
-            } else {
-              parentBall.material.color.set(0xffa500); // orange otherwise
-            }
-
-            mistakeMade = true;
+            parentBall.material.color.set(settings.answerFeedback === 'Immediate' ? 0xff0022 : 0xffff00); // Turn red
           }
         } else {
-          // Player selected a distractor ball
-          parentBall.material.color.set(0xff0022); // Turn red
-          mistakeMade = true;
+          if (targetBalls.includes(parentBall)) {
+            // Check if the selected ball is the correct one in the sequence
+            if (parentBall === targetSequence[userSequence.length - 1].ball && !mistakeMade) {
+              // Correct selection
+              parentBall.material.color.set(0xffff00); // Turn yellow
+            } else {
+              // Wrong sequence but correct target ball
+              parentBall.material.color.set(0xffa500); // orange otherwise
+              mistakeMade = true;
+            }
+          } else {
+            // Player selected a distractor ball
+            parentBall.material.color.set(0xff0022); // Turn red
+            mistakeMade = true;
+          }
         }
 
         // Check if the player has selected enough balls
@@ -1752,6 +1758,12 @@
         if (!userSequence.includes(target.ball))
           target.ball.material.color.set(0x00ff22); // Turn green
         addNumberLabel(target.ball, i + 1); // Add number label
+      }
+
+      for (const userSelectedBall of userSequence) {
+        if (!targetBalls.includes(userSelectedBall)) {
+          userSelectedBall.material.color.set(0xff0022); // Turn red
+        }
       }
     }
 
