@@ -334,7 +334,7 @@
     const BALL_RADIUS = 1.5;
     const DEFAULT_BALL_COLOR = '#F4DDCC';
     const sessionId = Date.now();
-    let scene, camera, renderer, controls, anaglyphEffect, clock, delta;
+    let scene, camera, renderer, controls, anaglyphEffect, clock, delta, fpsDelta;
     let envMap;
     let gui;
     let balls = [];
@@ -386,6 +386,8 @@
     const closeGraphButton = document.getElementById('close-graph-button');
 
     let vrButton;
+
+    let frameTime = null;
 
     init();
     renderer.setAnimationLoop(animate);
@@ -459,6 +461,8 @@
         use3DGlasses: false,
         disparity: 0.10,
         fov: 75,
+        useFps: false,
+        fps: 60,
       };
 
       settings = {
@@ -668,6 +672,25 @@
       delayTimerAdjustmentFolder.add(settings, 'delayAfterChangeByIncorrect').name('Change by');
       delayTimerAdjustmentFolder.add(settings, 'everyIncorrectDelayAfter').name('Every Incorrect').min(1).step(1);
 
+      const fpsFolder = gui.addFolder('FPS');
+      fpsFolder.add(settings, 'useFps').name('Customize FPS').onChange(enabled => {
+        updateFpsSettings();
+        switchFps(enabled);
+      });
+
+      const fpsController = fpsFolder.add(settings, 'fps').min(1).name('FPS').onChange(updateFpsSettings);
+      const switchFps = (enabled) => {
+        if (enabled) {
+          fpsController.domElement.style.pointerEvents = 'auto';
+          fpsController.domElement.style.opacity = '1.0';
+        } else {
+          fpsController.domElement.style.pointerEvents = 'none';
+          fpsController.domElement.style.opacity = '0.5';
+        }
+      }
+      switchFps(settings.useFps);
+      updateFpsSettings();
+
       const resetFolder = gui.addFolder('Reset App');
       resetFolder.add(settings, 'resetApp').name('Reset to default');
 
@@ -752,6 +775,7 @@
       isGameStarting = true;
       clock = new THREE.Clock();
       delta = 0;
+      fpsDelta = 0;
 
       // Disable the Start Game button
       gui.__controllers.forEach(controller => {
@@ -1772,18 +1796,40 @@
       anaglyphEffect.setSize(window.innerWidth, window.innerHeight);
     }
 
+    function updateFpsSettings() {
+      if (settings.useFps) {
+        frameTime = 1 / settings.fps;
+      } else {
+        frameTime = null;
+      }
+    }
+
     function animate() {
-      delta += clock ? clock.getDelta() : 0;
+      const change = clock ? clock.getDelta() : 0;
+      delta += change;
       while (delta > (1 / 60)) {
         updateGame();
         controls.update();
         delta -= (1 / 60);
       }
-      if (settings.use3DGlasses) {
-        anaglyphEffect.render(scene, camera);
+
+      fpsDelta += change;
+      if (frameTime) {
+        if (fpsDelta > frameTime) {
+          fpsDelta = 0;
+          render();
+        }
       } else {
-        renderer.render(scene, camera);
+        render();
       }
+    }
+
+    function render() {
+        if (settings.use3DGlasses) {
+          anaglyphEffect.render(scene, camera);
+        } else {
+          renderer.render(scene, camera);
+        }
     }
 
     function updateGame() {
