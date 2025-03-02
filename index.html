@@ -334,7 +334,7 @@
     const BALL_RADIUS = 1.5;
     const DEFAULT_BALL_COLOR = '#F4DDCC';
     const sessionId = Date.now();
-    let scene, camera, renderer, controls, anaglyphEffect, clock, delta, fpsDelta;
+    let scene, camera, renderer, controls, anaglyphEffect, clock, delta;
     let envMap;
     let gui;
     let balls = [];
@@ -743,7 +743,6 @@
       isGameStarting = true;
       clock = new THREE.Clock();
       delta = 0;
-      fpsDelta = 0;
 
       // Disable the Start Game button
       gui.__controllers.forEach(controller => {
@@ -1784,18 +1783,22 @@
     }
 
     function animate() {
+      if (frameTime) {
+        animateThrottled();
+      }
       const change = clock ? clock.getDelta() : 0;
       updateGame(change * 60);
       controls.update();
+      render();
+    }
 
-      fpsDelta += change;
-      if (frameTime) {
-        if (fpsDelta > frameTime) {
-          fpsDelta = 0;
-          render();
-        }
-      } else {
+    function animateThrottled() {
+      const change = clock ? clock.getDelta() : 0;
+      delta += change;
+      if (delta > frameTime) {
+        updateGame(delta * 60);
         render();
+        delta = 0;
       }
     }
 
