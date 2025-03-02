@@ -166,7 +166,7 @@
     <div id="center-dot"></div>
   </div>
   <div id="instructions">
-    Scroll = Zoom, Left Mouse Drag = Rotate, Right Mouse Drag = Move (only works if you disable automatic screen rotation)
+    Scroll = Zoom, Left Mouse Drag = Rotate, Right Mouse Drag = Move, R = Restart Game
   </div>
   <div id="average-display">
     Avg Score: N/A | Avg Accuracy: N/A%
@@ -712,6 +712,20 @@
 
       // Initialize the center dot
       updateCenterDot();
+      document.addEventListener("keydown", event => {
+        const tagName = event.target.tagName.toLowerCase();
+        const isEditable = event.target.isContentEditable;
+        if (tagName === "input" || tagName === "textarea" || isEditable) {
+            return;
+        }
+        switch (event.code) {
+          case "KeyR":
+            startGame();
+            break;
+          default:
+            break;
+        }
+      });
     }
 
     function updateCenterDot() {
