@@ -347,6 +347,7 @@
     let isSequenceShowing = false;
     let isUserTurn = false;
     let defaultSettings;
+    let overrideSettings;
     let settings;
     let raycaster = new THREE.Raycaster();
     let mouse = new THREE.Vector2();
@@ -396,16 +397,7 @@
     function init() {
       defaultSettings = {
         level: 4,
-        movementMode: 'Non-Rotating',
-        verticalRotationGroups: 2,
-        horizontalRotationGroups: 2,
-        rotationSpeed: 0.01,
-        isRandomMode: false,
-        orderMode: 'Combined',
-        isNonConsecutiveMode: true,
         autoProgression: true,
-        showAnswers: true,
-        isRegular3DMOT: true,
         numBlueDistractors: 4,
         numColoredDistractors: 0,
         ballSpeed: 0.35,
@@ -426,7 +418,6 @@
         highlightDuration: 1200,
         highlightSimultaneously: true,
         delayAfterSequence: 7500,
-        numberSize: 3,
         dotSize: 12, // Center Dot Size
         blinkDot: true,
         // Flash Mode settings
@@ -464,6 +455,19 @@
         useFps: false,
         fps: 60,
       };
+
+      overrideSettings = {
+        showAnswers: true,
+        movementMode: 'Non-Rotating',
+        verticalRotationGroups: 2,
+        horizontalRotationGroups: 2,
+        rotationSpeed: 0.01,
+        isRandomMode: false,
+        orderMode: 'Combined',
+        isNonConsecutiveMode: true,
+        isRegular3DMOT: true,
+        numberSize: 3,
+      }
 
       settings = {
         ...defaultSettings,
@@ -561,43 +565,6 @@
       document.getElementById('gui-container').appendChild(gui.domElement);
 
       gui.add(settings, 'level').name('Level');
-      const movementModeController = gui.add(settings, 'movementMode', ['Non-Rotating', 'Rotating', 'Combination']).name('Movement Mode');
-      movementModeController.__li.setAttribute('title', 'Choose how balls move: Non-Rotating, Rotating around the center of the screen, or a Combination of both.');
-      const rotationFolder = gui.addFolder('Rotation Mode Settings');
-      rotationFolder.add(settings, 'verticalRotationGroups').name('Vertical Groups');
-      rotationFolder.add(settings, 'horizontalRotationGroups').name('Horizontal Groups');
-      rotationFolder.add(settings, 'rotationSpeed').name('Rotation Speed');
-
-      const randomModeController = gui.add(settings, 'isRandomMode').name('Random Mode');
-      randomModeController.__li.setAttribute('title','When enabled, the target balls are selected in a random order, rather than ascending.');
-
-      const orderModeController = gui.add(settings, 'orderMode', ['Ascending', 'Descending', 'Combined', 'Extended Combined']).name('Order Mode');
-      
-      const nonConsecutiveController = gui.add(settings, 'isNonConsecutiveMode').name('Non-Consecutive Mode');
-      nonConsecutiveController.__li.setAttribute('title', 'When enabled,  the numbering of target balls might skip numbers (e.g. 1, 4, 56)');
-
-      // Add the Regular 3D MOT toggle
-      const regularMOTController = gui.add(settings, 'isRegular3DMOT').name('Regular 3D MOT Mode');
-      regularMOTController.__li.setAttribute('title', 'When enabled, the order of ball selection does not matter');
-      // Give it a special background color so it stands out
-      regularMOTController.__li.style.backgroundColor = '#ffa500'; // or any unique color you like
-      // Hide Random Mode, Order Mode, and Non-Consecutive Mode when isRegular3DMOT is true
-      regularMOTController.onChange(value => {
-        // Hide or show the existing controllers:
-        randomModeController.domElement.parentNode.style.display = value ? 'none' : '';
-        orderModeController.domElement.parentNode.style.display = value ? 'none' : '';
-        nonConsecutiveController.domElement.parentNode.style.display = value ? 'none' : '';
-
-        // Optionally, you might also want to reset their values if isRegular3DMOT is activated:
-        // if (value) {
-        //   settings.isRandomMode = false;
-        //   settings.orderMode = 'Combined';
-        //   settings.isNonConsecutiveMode = false;
-        // }
-      });
-
-
-      gui.add(settings, 'showAnswers').name('Show Answers');
       gui.add(settings, 'numBlueDistractors').name('# Blue Distractors');
       gui.add(settings, 'numColoredDistractors').name('# Colored Distractors');
       gui.add(settings, 'ballSpeed').min(0).name('Ball Speed');
@@ -626,7 +593,6 @@
       gui.add(settings, 'highlightDuration').name('Highlight Duration');
       gui.add(settings, 'highlightSimultaneously').name('Highlight Together');
       gui.add(settings, 'delayAfterSequence').name('Delay After');
-      gui.add(settings, 'numberSize').name('Number Size');
 
       // Add Center Dot Size Controller
       gui.add(settings, 'dotSize').name('Center Dot Size').min(0).onChange(updateCenterDot);
@@ -870,6 +836,7 @@
       if (storedSettings) {
         Object.assign(settings, storedSettings);
       }
+      Object.assign(settings, overrideSettings);
     }
 
     function saveSettings() {
