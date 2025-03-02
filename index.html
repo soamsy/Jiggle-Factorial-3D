@@ -1785,12 +1785,8 @@
 
     function animate() {
       const change = clock ? clock.getDelta() : 0;
-      delta += change;
-      while (delta > (1 / 60)) {
-        updateGame();
-        controls.update();
-        delta -= (1 / 60);
-      }
+      updateGame(change * 60);
+      controls.update();
 
       fpsDelta += change;
       if (frameTime) {
@@ -1811,15 +1807,15 @@
         }
     }
 
-    function updateGame() {
+    function updateGame(delta) {
       // Update balls position
       if (!isUserTurn) {
-        updateBallPositions();
+        updateBallPositions(delta);
       }
 
       // Screen Rotation
       if (settings.screenRotation) {
-        screenRotationAngle += settings.screenRotationSpeed;
+        screenRotationAngle += settings.screenRotationSpeed * delta;
         let radius = settings.screenRotationDistance;
 
         // Adjust radius if varyRotationDistance is enabled
@@ -1867,10 +1863,10 @@
       }
     }
 
-    function updateBallPositions() {
+    function updateBallPositions(delta) {
       for (let ball of balls) {
         if (ball.userData.isRotating) {
-          ball.userData.rotationAngle += ball.userData.rotationSpeed;
+          ball.userData.rotationAngle += ball.userData.rotationSpeed * delta;
           const angle = ball.userData.rotationAngle;
           const radius = ball.userData.rotationRadius;
 
@@ -1884,7 +1880,7 @@
             ball.position.z = radius * Math.cos(angle);
           }
         } else {
-          ball.position.add(ball.userData.velocity);
+          ball.position.add(ball.userData.velocity.clone().multiplyScalar(delta));
 
           // Bounce off walls
           const halfX = settings.boxX / 2 - 2;
@@ -1959,8 +1955,8 @@
 
             // Move balls apart to prevent overlap
             const overlap = (minDist - distance) / 2;
-            ball1.position.add(normal.clone().multiplyScalar(overlap));
-            ball2.position.sub(normal.clone().multiplyScalar(overlap));
+            ball1.position.add(normal.clone().multiplyScalar(overlap * delta));
+            ball2.position.sub(normal.clone().multiplyScalar(overlap * delta));
           }
         }
       }
