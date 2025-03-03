@@ -380,6 +380,7 @@
 
     let ballTexture;
     let ballNormalTexture;
+    let ballTextureLow;
 
     const averageDisplayElement = document.getElementById('average-display');
 
@@ -564,6 +565,10 @@
       ballNormalTexture.repeat.set(0.5, 0.5);
       ballTexture.offset.set(0.31, 0.0);
       ballNormalTexture.offset.set(0.31, 0.0);
+
+      ballTextureLow = textureLoader.load('texture_low.png');
+      ballTextureLow.repeat.set(0.5, 0.5);
+      ballTextureLow.offset.set(0.31, 0.0);
 
       gui = new dat.GUI({ autoPlace: false });
       document.getElementById('gui-container').appendChild(gui.domElement);
@@ -1039,7 +1044,7 @@
       if (settings.graphics === 'Potato') {
         material = new THREE.MeshBasicMaterial({ color: color });
       } else if (settings.graphics === 'Low') {
-        material = new THREE.MeshBasicMaterial({ color: color, map: ballTexture });
+        material = new THREE.MeshBasicMaterial({ color: color, map: ballTextureLow });
       } else {
         material = new THREE.MeshStandardMaterial({
           color: color,
