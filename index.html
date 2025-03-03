@@ -393,6 +393,7 @@
     let fpsMultiplier = null;
 
     init();
+    then = Date.now();
     renderer.setAnimationLoop(animate);
     updateGame();
 
@@ -757,7 +758,6 @@
     function startGame() {
       if (isGameStarting) return; // Prevent multiple initializations
       isGameStarting = true;
-      then = Date.now();
 
       // Disable the Start Game button
       gui.__controllers.forEach(controller => {
