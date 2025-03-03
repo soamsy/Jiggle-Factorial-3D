@@ -393,7 +393,7 @@
     let fpsMultiplier = null;
 
     init();
-    then = Date.now();
+    then = performance.now();
     renderer.setAnimationLoop(animate);
     updateGame();
 
@@ -1804,7 +1804,7 @@
         animateThrottled();
         return;
       }
-      const now = Date.now();
+      const now = performance.now();
       const delta = now - then;
       then = now;
       updateGame(delta * FRAME_ADJUSTMENT);
@@ -1813,7 +1813,7 @@
     }
 
     function animateThrottled() {
-      const now = Date.now();
+      const now = performance.now();
       const delta = now - then;
 
       if (delta > fpsInterval) {
