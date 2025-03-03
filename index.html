@@ -1810,9 +1810,10 @@
       const change = clock ? clock.getDelta() : 0;
       delta += change;
       if (delta > frameTime) {
-        updateGame(delta * 60);
+        const remaining = delta % frameTime;
+        updateGame((delta - remaining) * 60);
         render();
-        delta = 0;
+        delta = remaining;
       }
     }
 
