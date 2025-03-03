@@ -1068,7 +1068,7 @@
         isFlashing: false
       };
 
-      const outlineGeometry = new THREE.SphereGeometry(BALL_RADIUS + 0.10, 32, 32);
+      const outlineGeometry = new THREE.SphereGeometry(BALL_RADIUS + (['Potato', 'Low'].includes(settings.graphics) ? 0.25 : 0.1), 32, 32);
       const outlineMaterial = new THREE.MeshBasicMaterial({
         color: 0x000000,
         side: THREE.BackSide,
