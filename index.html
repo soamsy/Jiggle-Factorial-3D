@@ -333,8 +333,9 @@
     // Global Variables
     const BALL_RADIUS = 1.5;
     const DEFAULT_BALL_COLOR = '#F4DDCC';
+    const FRAME_ADJUSTMENT = 60 / 1000;
     const sessionId = Date.now();
-    let scene, camera, renderer, controls, anaglyphEffect, clock, delta;
+    let scene, camera, renderer, controls, anaglyphEffect, then;
     let envMap;
     let gui;
     let balls = [];
@@ -388,7 +389,8 @@
 
     let vrButton;
 
-    let frameTime = null;
+    let fpsInterval = null;
+    let fpsMultiplier = null;
 
     init();
     renderer.setAnimationLoop(animate);
@@ -637,7 +639,7 @@
       delayTimerAdjustmentFolder.add(settings, 'everyIncorrectDelayAfter').name('Every Incorrect').min(1).step(1);
 
       const fpsFolder = gui.addFolder('FPS');
-      fpsFolder.add(settings, 'useFps').name('Customize FPS').onChange(enabled => {
+      fpsFolder.add(settings, 'useFps').name('Throttle FPS').onChange(enabled => {
         updateFpsSettings();
         switchFps(enabled);
       });
@@ -755,8 +757,7 @@
     function startGame() {
       if (isGameStarting) return; // Prevent multiple initializations
       isGameStarting = true;
-      clock = new THREE.Clock();
-      delta = 0;
+      then = Date.now();
 
       // Disable the Start Game button
       gui.__controllers.forEach(controller => {
@@ -1790,30 +1791,36 @@
 
     function updateFpsSettings() {
       if (settings.useFps) {
-        frameTime = 1 / settings.fps;
+        fpsInterval = 1000 / settings.fps;
+        fpsMultiplier = fpsInterval * FRAME_ADJUSTMENT;
       } else {
-        frameTime = null;
+        fpsInterval = null;
+        fpsMultiplier = null;
       }
     }
 
     function animate() {
-      if (frameTime) {
+      if (fpsInterval) {
         animateThrottled();
+        return;
       }
-      const change = clock ? clock.getDelta() : 0;
-      updateGame(change * 60);
+      const now = Date.now();
+      const delta = now - then;
+      then = now;
+      updateGame(delta * FRAME_ADJUSTMENT);
       controls.update();
       render();
     }
 
     function animateThrottled() {
-      const change = clock ? clock.getDelta() : 0;
-      delta += change;
-      if (delta > frameTime) {
-        const remaining = delta % frameTime;
-        updateGame((delta - remaining) * 60);
-        render();
-        delta = remaining;
+      const now = Date.now();
+      const delta = now - then;
+
+      if (delta > fpsInterval) {
+          then = now - (delta % fpsInterval);
+          updateGame(Math.floor(delta/fpsInterval) * fpsMultiplier);
+          controls.update();
+          render();
       }
     }
 
