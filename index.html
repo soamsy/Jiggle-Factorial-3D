@@ -336,6 +336,7 @@
     const FRAME_ADJUSTMENT = 60 / 1000;
     const sessionId = Date.now();
     let scene, camera, renderer, controls, anaglyphEffect, then;
+    let ambientLight, directionalLight, spotlight1, spotlight2, pointLight;
     let envMap;
     let gui;
     let balls = [];
@@ -458,6 +459,7 @@
         fov: 75,
         useFps: false,
         fps: 60,
+        graphics: 'Default',
       };
 
       overrideSettings = {
@@ -512,8 +514,6 @@
       // Renderer Setup
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.shadowMap.enabled = true; // Enable shadow mapping
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.0;
       document.body.appendChild(renderer.domElement);
@@ -528,10 +528,10 @@
       controls.enablePan = true;
 
       // Lighting
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+      ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
       scene.add(ambientLight);
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
       directionalLight.position.set(settings.boxX / 2, settings.boxY, settings.boxZ / 2);
       directionalLight.castShadow = true;
       directionalLight.shadow.mapSize.width = 1024;
@@ -540,17 +540,17 @@
       directionalLight.shadow.camera.far = 500;
       scene.add(directionalLight);
 
-      const spotlight1 = new THREE.SpotLight(0xffffff, 0.2);
+      spotlight1 = new THREE.SpotLight(0xffffff, 0.2);
       spotlight1.position.set(-50, 50, -50);
       spotlight1.castShadow = true;
       scene.add(spotlight1);
 
-      const spotlight2 = new THREE.SpotLight(0xffffff, 0.2);
+      spotlight2 = new THREE.SpotLight(0xffffff, 0.2);
       spotlight2.position.set(50, -50, 50);
       spotlight2.castShadow = true;
       scene.add(spotlight2);
 
-      const pointLight = new THREE.PointLight(0xffffff, 0.2);
+      pointLight = new THREE.PointLight(0xffffff, 0.2);
       camera.add(pointLight);
       scene.add(camera);
 
@@ -580,10 +580,16 @@
         camera.updateProjectionMatrix();
       });
       const ballAppearanceFolder = gui.addFolder('Ball/Box Appearance');
+      ballAppearanceFolder.add(settings, 'graphics', ['Default', 'Low', 'Potato']).name('Graphics').onChange(() => {
+        updateGraphicsMode();
+        startGame();
+      });
       ballAppearanceFolder.add(settings, 'ballOpacity').min(0.5).max(1.0).name('Ball Opacity').onChange(updateBallAppearance);
       ballAppearanceFolder.add(settings, 'ballRoughness').min(0.0).max(1.0).name('Ball Roughness').onChange(updateBallAppearance);
       ballAppearanceFolder.add(settings, 'ballMetalness').min(0.0).max(1.0).name('Ball Metalness').onChange(updateBallAppearance);
       ballAppearanceFolder.add(settings, 'boxTexture', ['Gray', 'Black', 'Wall 1', 'Wall 2']).name('Box Walls').onChange(updateBoxAppearance);
+
+      updateGraphicsMode();
 
       const screenRotationFolder = gui.addFolder('Screen Rotation');
       screenRotationFolder.add(settings, 'screenRotation').name('Enable');
@@ -956,6 +962,21 @@
       }
     }
 
+    function updateGraphicsMode() {
+      if (['Potato', 'Low'].includes(settings.graphics)) {
+        scene.remove(ambientLight);
+        scene.remove(directionalLight);
+        scene.remove(spotlight1);
+        scene.remove(spotlight2);
+        camera.remove(pointLight);
+      } else {
+        scene.add(ambientLight);
+        scene.add(directionalLight);
+        scene.add(spotlight1);
+        scene.add(spotlight2);
+        camera.add(pointLight);
+      }
+    }
 
     function createBalls() {
       const totalBalls = settings.level + settings.numBlueDistractors + settings.numColoredDistractors;
@@ -1014,21 +1035,27 @@
 
     function createBall(color) {
       const geometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
-      const material = new THREE.MeshStandardMaterial({
-        color: color,
-        metalness: settings.ballMetalness,
-        roughness: settings.ballRoughness,
-        emissive: "#FFFFFF",
-        emissiveIntensity: 0.05,
-        transparent: true,
-        opacity: settings.ballOpacity,
-        map: ballTexture,
-        normalMap: ballNormalTexture,
-      });
+      let material;
+      if (settings.graphics === 'Potato') {
+        material = new THREE.MeshBasicMaterial({ color: color });
+      } else if (settings.graphics === 'Low') {
+        material = new THREE.MeshBasicMaterial({ color: color, map: ballTexture });
+      } else {
+        material = new THREE.MeshStandardMaterial({
+          color: color,
+          metalness: settings.ballMetalness,
+          roughness: settings.ballRoughness,
+          emissive: "#FFFFFF",
+          emissiveIntensity: 0.05,
+          transparent: true,
+          opacity: settings.ballOpacity,
+          map: ballTexture,
+          normalMap: ballNormalTexture,
+        });
+      }
 
       const ball = new THREE.Mesh(geometry, material);
-      ball.castShadow = true;
-      ball.receiveShadow = true;
+      ball.receiveShadow = false;
       ball.userData = {
         velocity: new THREE.Vector3(),
         isRotating: false,
@@ -1045,9 +1072,7 @@
       const outlineMaterial = new THREE.MeshBasicMaterial({
         color: 0x000000,
         side: THREE.BackSide,
-        depthWrite: false,
-        opacity: 0.5,
-        transparent: true,
+        ...(['Potato', 'Low'].includes(settings.graphics) ? {} : { opacity: 0.5, transparent: true, depthWrite: false }),
       });
       const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
       ball.add(outline);
