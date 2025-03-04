@@ -365,6 +365,7 @@
     let flashModeTimeouts = []; // To store timeouts related to Flash Mode
     let mistakeMade = false; // Flag to track if a mistake has been made
     let boundingBox;
+    let boundingBoxEdges;
     let wallTexture1;
     let wallNormal1;
     let wallTexture2;
@@ -592,7 +593,7 @@
       ballAppearanceFolder.add(settings, 'ballOpacity').min(0.5).max(1.0).name('Ball Opacity').onChange(updateBallAppearance);
       ballAppearanceFolder.add(settings, 'ballRoughness').min(0.0).max(1.0).name('Ball Roughness').onChange(updateBallAppearance);
       ballAppearanceFolder.add(settings, 'ballMetalness').min(0.0).max(1.0).name('Ball Metalness').onChange(updateBallAppearance);
-      ballAppearanceFolder.add(settings, 'boxTexture', ['Gray', 'Black', 'Wall 1', 'Wall 2']).name('Box Walls').onChange(updateBoxAppearance);
+      ballAppearanceFolder.add(settings, 'boxTexture', ['Gray', 'Black', 'White', 'Wall 1', 'Wall 2']).name('Box Walls').onChange(updateBoxAppearance);
 
       updateGraphicsMode();
 
@@ -889,32 +890,40 @@
       const boxY = settings.boxY;
       const boxZ = settings.boxZ;
 
-      // Create the solid box with slightly opaque walls
       const geometry = new THREE.BoxGeometry(boxX, boxY, boxZ);
-      const material = new THREE.MeshPhongMaterial({
-        color: 0x444444,
-        transparent: true,
-        opacity: 0.1, // Slightly opaque
-        side: THREE.BackSide, // Render inside faces
-      });
+      let material;
+      if (['Potato', 'Low'].includes(settings.graphics)) {
+        material = new THREE.MeshBasicMaterial({
+          color: 0x444444,
+          transparent: true,
+          opacity: 0.1,
+          side: THREE.BackSide,
+        });
+      } else {
+        material = new THREE.MeshPhongMaterial({
+          color: 0x444444,
+          transparent: true,
+          opacity: 0.1,
+          side: THREE.BackSide,
+        });
+      }
       const box = new THREE.Mesh(geometry, material);
       box.receiveShadow = false;
-      box.userData.isGameObject = true; // Mark as game object
+      box.userData.isGameObject = true;
       scene.add(box);
       boundingBox = box;
-      updateBoxAppearance();
 
-      // Add thin white edges to the box
       const edges = new THREE.EdgesGeometry(geometry);
       const edgeMaterial = new THREE.LineBasicMaterial({
         color: 0xffffff,
         transparent: true,
         opacity: 0.2,
       });
-      const boundingBoxEdges = new THREE.LineSegments(edges, edgeMaterial);
-      boundingBoxEdges.userData.isGameObject = true; // Mark as game object
+      boundingBoxEdges = new THREE.LineSegments(edges, edgeMaterial);
+      boundingBoxEdges.userData.isGameObject = true;
       boundingBoxEdges.scale.set(0.998, 0.998, 0.998)
       scene.add(boundingBoxEdges);
+      updateBoxAppearance();
     }
 
     function repeatTexture(texture, x, y) {
@@ -931,6 +940,8 @@
       boundingBox.material.needsUpdate = true;
       boundingBox.material.metalness = null;
       boundingBox.material.roughness = null;
+      boundingBoxEdges.material.color.set('#ffffff');
+      boundingBoxEdges.material.opacity = 0.2;
       switch (settings.boxTexture) {
         case 'Wall 1':
           if (!wallTexture1) {
@@ -938,8 +949,10 @@
             wallTexture1 = loader.load('textures/wall1_color.jpg');
             wallNormal1 = loader.load('textures/wall1_normal.jpg');
           }
-          boundingBox.material.map = wallTexture1;
-          boundingBox.material.normalMap = wallNormal1;
+          if (!['Potato', 'Low'].includes(settings.graphics)) {
+            boundingBox.material.map = wallTexture1;
+            boundingBox.material.normalMap = wallNormal1;
+          }
           boundingBox.material.color.set(null);
           boundingBox.material.opacity = 0.9;
           break;
@@ -951,8 +964,10 @@
             repeatTexture(wallTexture2, 2, 2);
             repeatTexture(wallNormal2, 2, 2);
           }
-          boundingBox.material.map = wallTexture2;
-          boundingBox.material.normalMap = wallNormal2;
+          if (!['Potato', 'Low'].includes(settings.graphics)) {
+            boundingBox.material.map = wallTexture2;
+            boundingBox.material.normalMap = wallNormal2;
+          }
           boundingBox.material.color.set("#555555");
           boundingBox.material.opacity = 0.8;
           boundingBox.material.metalness = 0.9;
@@ -961,6 +976,12 @@
         case 'Black':
           boundingBox.material.color.set('#000000');
           boundingBox.material.opacity = 0.9;
+          break;
+        case 'White':
+          boundingBox.material.color.set('#f7f7f7');
+          boundingBox.material.opacity = 1.0;
+          boundingBoxEdges.material.color.set('#222222');
+          boundingBoxEdges.material.opacity = 1.0;
           break;
         default:
           break;
@@ -1077,7 +1098,7 @@
       const outlineMaterial = new THREE.MeshBasicMaterial({
         color: 0x000000,
         side: THREE.BackSide,
-        ...(['Potato', 'Low'].includes(settings.graphics) ? {} : { opacity: 0.5, transparent: true, depthWrite: false }),
+        ...(['Potato', 'Low'].includes(settings.graphics) ? {} : { opacity: 0.5, transparent: true }),
       });
       const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
       ball.add(outline);
