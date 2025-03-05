@@ -462,6 +462,7 @@
         useFps: false,
         fps: 60,
         graphics: 'Default',
+        resetRotation: 'On Game Start',
       };
 
       overrideSettings = {
@@ -675,6 +676,7 @@
       resetFolder.add(settings, 'resetApp').name('Reset to default');
 
       gui.add(settings, 'answerFeedback', ['Immediate', 'After Selection']).name('Feedback');
+      gui.add(settings, 'resetRotation', ['Never', 'On Game Start']).name('Reset Camera');
       gui.add(settings, 'highlightSimultaneously').name('Highlight Together');
       gui.add(settings, 'trialStartDelay').name('Trial Start Delay (ms)');
       gui.add(settings, 'highlightDuration').name('Highlight Duration');
@@ -771,6 +773,12 @@
     function startGame() {
       if (isGameStarting) return; // Prevent multiple initializations
       isGameStarting = true;
+
+      if (settings.resetRotation === 'On Game Start') {
+        const radius = camera.position.length();
+        camera.position.set(0, 0, radius);
+        camera.lookAt(0, 0, 0);
+      }
 
       // Disable the Start Game button
       gui.__controllers.forEach(controller => {
