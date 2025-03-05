@@ -331,7 +331,6 @@
     	}
     }
     // Global Variables
-    const BALL_RADIUS = 1.5;
     const DEFAULT_BALL_COLOR = '#F4DDCC';
     const FRAME_ADJUSTMENT = 60 / 1000;
     const sessionId = Date.now();
@@ -411,6 +410,7 @@
         ballMetalness: 0.7,
         ballRoughness: 0.40,
         boxTexture: 'Gray',
+        ballRadius: 2.0,
         boxX: 45,
         boxY: 30,
         boxZ: 25,
@@ -578,9 +578,10 @@
       gui.add(settings, 'numBlueDistractors').name('# Blue Distractors');
       gui.add(settings, 'numColoredDistractors').name('# Colored Distractors');
       gui.add(settings, 'ballSpeed').min(0).name('Ball Speed');
-      gui.add(settings, 'boxX').min(1).max(100).name('Box Width');
-      gui.add(settings, 'boxY').min(1).max(100).name('Box Height');
-      gui.add(settings, 'boxZ').min(1).max(100).name('Box Depth');
+      gui.add(settings, 'ballRadius').min(0.01).max(8).name('Ball Radius').onChange(() => startGame());
+      gui.add(settings, 'boxX').min(1).max(100).name('Box Width').onChange(() => startGame());
+      gui.add(settings, 'boxY').min(1).max(100).name('Box Height').onChange(() => startGame());
+      gui.add(settings, 'boxZ').min(1).max(100).name('Box Depth').onChange(() => startGame());
       gui.add(settings, 'fov').min(40).max(120).name('FOV').onChange((value) => {
         camera.fov = value;
         camera.updateProjectionMatrix();
@@ -1060,7 +1061,7 @@
     }
 
     function createBall(color) {
-      const geometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
+      const geometry = new THREE.SphereGeometry(settings.ballRadius, 32, 32);
       let material;
       if (settings.graphics === 'Potato') {
         material = new THREE.MeshBasicMaterial({ color: color });
@@ -1094,7 +1095,8 @@
         isFlashing: false
       };
 
-      const outlineGeometry = new THREE.SphereGeometry(BALL_RADIUS + (['Potato', 'Low'].includes(settings.graphics) ? 0.25 : 0.1), 32, 32);
+      const outlineRadius = settings.ballRadius + (['Potato', 'Low'].includes(settings.graphics) ? (settings.ballRadius / 6) : (settings.ballRadius / 15));
+      const outlineGeometry = new THREE.SphereGeometry(outlineRadius, 32, 32);
       const outlineMaterial = new THREE.MeshBasicMaterial({
         color: 0x000000,
         side: THREE.BackSide,
@@ -1993,7 +1995,7 @@
           const pos2 = ball2.position;
 
           const distance = pos1.distanceTo(pos2);
-          const minDist = 2 * (BALL_RADIUS + 0.2); // Sum of ball radius
+          const minDist = 2.2 * settings.ballRadius; // Sum of ball radius
 
           if (distance < minDist) {
             // Collision normal
