@@ -685,16 +685,17 @@
       switchFps(settings.useFps);
       updateFpsSettings();
 
+      const trialBehaviorFolder = gui.addFolder('Game Timing/Behavior');
+      trialBehaviorFolder.add(settings, 'answerFeedback', ['Immediate', 'After Selection']).name('Feedback');
+      trialBehaviorFolder.add(settings, 'resetRotation', ['Never', 'On Game Start']).name('Reset Camera');
+      trialBehaviorFolder.add(settings, 'trialStartDelay').name('Trial Start Delay (ms)');
+      trialBehaviorFolder.add(settings, 'highlightDuration').name('Highlight Duration');
+      trialBehaviorFolder.add(settings, 'delayAfterSequence').name('Delay After');
+      trialBehaviorFolder.add(settings, 'trialEndDelay').name('Trial End Delay (ms)');
+      trialBehaviorFolder.add(settings, 'highlightSimultaneously').name('Highlight Together');
+
       const resetFolder = gui.addFolder('Reset App');
       resetFolder.add(settings, 'resetApp').name('Reset to default');
-
-      gui.add(settings, 'answerFeedback', ['Immediate', 'After Selection']).name('Feedback');
-      gui.add(settings, 'resetRotation', ['Never', 'On Game Start']).name('Reset Camera');
-      gui.add(settings, 'highlightSimultaneously').name('Highlight Together');
-      gui.add(settings, 'trialStartDelay').name('Trial Start Delay (ms)');
-      gui.add(settings, 'highlightDuration').name('Highlight Duration');
-      gui.add(settings, 'delayAfterSequence').name('Delay After');
-      gui.add(settings, 'trialEndDelay').name('Trial End Delay (ms)');
 
       // Add "Start Game" button at the end
       const restartGameButton = gui.add(settings, 'startGame').name('Restart Game');
