@@ -444,7 +444,7 @@
       gui.add(settings, 'numBlueDistractors').name('# Blue Distractors');
       gui.add(settings, 'numColoredDistractors').name('# Colored Distractors');
       gui.add(settings, 'ballSpeed').min(0).name('Ball Speed');
-      gui.add(settings, 'ballRadius').min(0.01).max(8).name('Ball Radius').onChange(() => startGame());
+      gui.add(settings, 'ballRadius').min(0.01).max(8).name('Ball Size').onChange(() => startGame());
       gui.add(settings, 'boxX').min(1).max(100).name('Box Width').onChange(() => startGame());
       gui.add(settings, 'boxY').min(1).max(100).name('Box Height').onChange(() => startGame());
       gui.add(settings, 'boxZ').min(1).max(100).name('Box Depth').onChange(() => startGame());
