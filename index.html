@@ -789,6 +789,7 @@
 
       if (settings.resetRotation === 'On Game Start') {
         const radius = camera.position.length();
+        controls.reset();
         camera.position.set(0, 0, radius);
         camera.lookAt(0, 0, 0);
       }
