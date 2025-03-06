@@ -227,7 +227,7 @@
     const FRAME_ADJUSTMENT = 60 / 1000;
     const sessionId = Date.now();
     let scene, camera, renderer, controls, anaglyphEffect, then;
-    let ambientLight, directionalLight, spotlight1, spotlight2, pointLight;
+    let ambientLight, directionalLight, directionalLight2;
     let stats;
     let envMap;
     let gui;
@@ -409,30 +409,17 @@
       controls.enablePan = true;
 
       // Lighting
-      ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+      ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
       scene.add(ambientLight);
 
       directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
       directionalLight.position.set(settings.boxX / 2, settings.boxY, settings.boxZ / 2);
-      directionalLight.castShadow = true;
-      directionalLight.shadow.mapSize.width = 1024;
-      directionalLight.shadow.mapSize.height = 1024;
-      directionalLight.shadow.camera.near = 0.5;
-      directionalLight.shadow.camera.far = 500;
       scene.add(directionalLight);
 
-      spotlight1 = new THREE.SpotLight(0xffffff, 0.2);
-      spotlight1.position.set(-50, 50, -50);
-      spotlight1.castShadow = true;
-      scene.add(spotlight1);
+      directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+      directionalLight2.position.set(0, settings.boxY, settings.boxZ);
+      scene.add(directionalLight2);
 
-      spotlight2 = new THREE.SpotLight(0xffffff, 0.2);
-      spotlight2.position.set(50, -50, 50);
-      spotlight2.castShadow = true;
-      scene.add(spotlight2);
-
-      pointLight = new THREE.PointLight(0xffffff, 0.2);
-      camera.add(pointLight);
       scene.add(camera);
 
       anaglyphEffect = new AnaglyphEffect(renderer, settings.disparity);
@@ -880,15 +867,11 @@
       if (['Potato', 'Low'].includes(settings.graphics)) {
         scene.remove(ambientLight);
         scene.remove(directionalLight);
-        scene.remove(spotlight1);
-        scene.remove(spotlight2);
-        camera.remove(pointLight);
+        scene.remove(directionalLight2);
       } else {
         scene.add(ambientLight);
         scene.add(directionalLight);
-        scene.add(spotlight1);
-        scene.add(spotlight2);
-        camera.add(pointLight);
+        scene.add(directionalLight2);
       }
     }
 
