@@ -230,7 +230,6 @@
     let isSequenceShowing = false;
     let isUserTurn = false;
     let defaultSettings;
-    let overrideSettings;
     let settings;
     let raycaster = new THREE.Raycaster();
     let mouse = new THREE.Vector2();
@@ -241,7 +240,6 @@
     let activeTimeouts = []; // Array to store active timeouts
     let correctAnswersCount = 0;
     let incorrectAnswersCount = 0;
-    let currentOrder = 'Ascending'; // Variable to store the current order
     let isGameStarting = false; // Prevent multiple initializations
     let flashModeTimeouts = []; // To store timeouts related to Flash Mode
     let mistakeMade = false; // Flag to track if a mistake has been made
@@ -347,19 +345,6 @@
         graphics: 'Default',
         resetRotation: 'On Game Start',
       };
-
-      overrideSettings = {
-        showAnswers: true,
-        movementMode: 'Non-Rotating',
-        verticalRotationGroups: 2,
-        horizontalRotationGroups: 2,
-        rotationSpeed: 0.01,
-        isRandomMode: false,
-        orderMode: 'Combined',
-        isNonConsecutiveMode: true,
-        isRegular3DMOT: true,
-        numberSize: 3,
-      }
 
       settings = {
         ...defaultSettings,
@@ -710,7 +695,6 @@
     }
 
     function clearGameObjects() {
-      // Remove only game-specific objects (balls, bounding box, labels)
       for (let i = scene.children.length - 1; i >= 0; i--) {
         const obj = scene.children[i];
         if (obj.userData.isGameObject) {
@@ -747,8 +731,6 @@
       settings.level = Math.max(1, Math.round(settings.level));
       settings.numBlueDistractors = Math.round(settings.numBlueDistractors);
       settings.numColoredDistractors = Math.round(settings.numColoredDistractors);
-      settings.verticalRotationGroups = Math.round(settings.verticalRotationGroups);
-      settings.horizontalRotationGroups = Math.round(settings.horizontalRotationGroups);
     }
 
     function loadSettings() {
@@ -756,7 +738,6 @@
       if (storedSettings) {
         Object.assign(settings, storedSettings);
       }
-      Object.assign(settings, overrideSettings);
     }
 
     function saveSettings() {
@@ -940,8 +921,7 @@
         coloredDistractorBalls.push(ball);
       }
 
-      // Assign Movement
-      assignMovement();
+      assignRandomMovement(balls);
     }
 
     function updateBallAppearance() {
@@ -977,7 +957,6 @@
       ball.receiveShadow = false;
       ball.userData = {
         velocity: new THREE.Vector3(),
-        isRotating: false,
         rotationGroup: 0,
         rotationAxis: '',
         originalColor: color,
@@ -1029,27 +1008,6 @@
       }
     }
 
-    function assignMovement() {
-      if (settings.movementMode === 'Combination') {
-        // Randomly assign each ball to rotate or move randomly
-        for (let ball of balls) {
-          if (Math.random() < 0.5) {
-            // Assign rotation movement to the ball
-            assignRotationMovement([ball]);
-          } else {
-            // Assign random movement to the ball
-            assignRandomMovement([ball]);
-          }
-        }
-      } else if (settings.movementMode === 'Rotating') {
-        // Assign rotation movement
-        assignRotationMovement(balls);
-      } else {
-        // Assign random movement
-        assignRandomMovement(balls);
-      }
-    }
-
     function assignRandomMovement(ballArray) {
       for (let ball of ballArray) {
         const direction = new THREE.Vector3(
@@ -1058,62 +1016,30 @@
           (Math.random() - 0.5)
         ).normalize();
         ball.userData.velocity.copy(direction.multiplyScalar(settings.ballSpeed));
-        ball.userData.isRotating = false;
-      }
-    }
-
-    function assignRotationMovement(ballArray) {
-      for (let ball of ballArray) {
-        ball.userData.isRotating = true;
-        ball.userData.rotationAxis = Math.random() < 0.5 ? 'vertical' : 'horizontal';
-        ball.userData.rotationRadius = 10 + Math.random() * 10; // Random radius between 10 and 20
-        ball.userData.rotationAngle = Math.random() * Math.PI * 2; // Random starting angle
-        ball.userData.rotationSpeed = (Math.random() > 0.5 ? 1 : -1) * settings.rotationSpeed;
       }
     }
 
     function highlightTargetBalls() {
       isSequenceShowing = true;
-      let numbers = [];
-      if (settings.isNonConsecutiveMode) {
-        numbers = generateNonConsecutiveNumbers(settings.level);
-      } else {
-        for (let i = 1; i <= settings.level; i++) {
-          numbers.push(i);
-        }
-      }
-
-      // Assign numbers to target balls
       targetSequence = [];
       for (let i = 0; i < targetBalls.length; i++) {
-        targetSequence.push({ ball: targetBalls[i], number: numbers[i] });
+        targetSequence.push({ ball: targetBalls[i] });
       }
-
-      // Sort targetSequence by number (ascending)
-      targetSequence.sort((a, b) => a.number - b.number);
 
       // Build highlightSequence from targetSequence
       let highlightSequence = [...targetSequence];
 
       // Shuffle the highlightSequence for Random Mode
-      if (settings.isRandomMode) {
-        highlightSequence = shuffleArray(highlightSequence);
-      }
-
       function highlightAllBalls(callback) {
         isSequenceShowing = true;
         for (const object of highlightSequence) {
           object.ball.material.color.set(0xff8800);
           object.ball.userData.isCurrentlyHighlighted = true;
-          addNumberLabel(object.ball, object.number);
         }
         let timeout = setTimeout(() => {
           for (const object of highlightSequence) {
             object.ball.material.color.set(DEFAULT_BALL_COLOR);
             object.ball.userData.isCurrentlyHighlighted = false; // Unmark as highlighted
-            disposeLabel(object.ball);
-            object.ball.remove(object.ball.userData.label);
-            object.ball.userData.label = null;
           }
           isSequenceShowing = false;
           callback();
@@ -1128,11 +1054,6 @@
           const previous = highlightSequence[index - 1];
           previous.ball.material.color.set(DEFAULT_BALL_COLOR);
           previous.ball.userData.isCurrentlyHighlighted = false; // Unmark as highlighted
-
-          // Remove label
-          disposeLabel(previous.ball.userData.label);
-          previous.ball.remove(previous.ball.userData.label);
-          previous.ball.userData.label = null;
         }
         if (index < highlightSequence.length) {
           // Highlight current ball
@@ -1140,77 +1061,25 @@
           current.ball.material.color.set(0xff0000);
           current.ball.userData.isCurrentlyHighlighted = true; // Mark as highlighted
 
-          // Add number label
-          addNumberLabel(current.ball, current.number);
           index++;
           let timeout = setTimeout(() => highlightNextBall(callback), settings.highlightDuration);
           activeTimeouts.push(timeout);
         } else {
           // End of sequence
           isSequenceShowing = false;
-          // Reset last ball color and remove label
           const lastBall = highlightSequence[index - 1].ball;
           lastBall.material.color.set(DEFAULT_BALL_COLOR);
           lastBall.userData.isCurrentlyHighlighted = false; // Unmark as highlighted
-          disposeLabel(lastBall.userData.label);
-          lastBall.remove(lastBall.userData.label);
-          lastBall.userData.label = null;
           callback();
         }
       }
   
       function afterHighlight() {
-        // Determine the order
-        let possibleOrders;
-
-        if (settings.orderMode === 'Descending') {
-          currentOrder = 'Descending';
-          targetSequence = targetSequence.slice().reverse();
-        } else if (settings.orderMode === 'Combined') {
-          // Original combined: choose Ascending or Descending
-          currentOrder = Math.random() < 0.5 ? 'Ascending' : 'Descending';
-          if (currentOrder === 'Descending') {
-            targetSequence = targetSequence.slice().reverse();
-          }
-        } else if (settings.orderMode === 'Extended Combined' && settings.isRandomMode) {
-          // Extended combined only applies if random mode is on
-          // The four possible orders: Ascending, Descending, Presented, Reverse Presented
-          // 'highlightSequence' represents the order they were presented.
-          possibleOrders = ['Ascending', 'Descending', 'Presented', 'Reverse Presented'];
-          currentOrder = possibleOrders[Math.floor(Math.random()*possibleOrders.length)];
-
-          if (currentOrder === 'Ascending') {
-            targetSequence = targetSequence.slice().sort((a, b) => a.number - b.number);
-          } else if (currentOrder === 'Descending') {
-            targetSequence = targetSequence.slice().sort((a, b) => b.number - a.number);
-          } else if (currentOrder === 'Presented') {
-            // Presented order: use the highlightSequence order as is
-            // targetSequence should reflect the order they were highlighted
-            // highlightSequence currently holds that order
-            targetSequence = highlightSequence;
-          } else if (currentOrder === 'Reverse Presented') {
-            // Reverse of presented order
-            targetSequence = highlightSequence.slice().reverse();
-          }
-        } else {
-          // Default to Ascending if extended combined chosen but random mode not active, or any fallback
-          currentOrder = 'Ascending';
-          targetSequence = targetSequence.slice().sort((a, b) => a.number - b.number);
-        }
-
-
-        // Start delay before user can interact
         messageElement.textContent = 'Get Ready...';
         let timeout = setTimeout(() => {
           isUserTurn = true;
-          mistakeMade = false; // Reset mistake flag
-          if (settings.isRegular3DMOT) {
-            messageElement.textContent = 'Select in any order';
-          } else {
-            messageElement.textContent = 'Your Turn! Select in ' + currentOrder + ' order.';
-          }
-
-          // Freeze balls
+          mistakeMade = false;
+          messageElement.textContent = 'Select in any order';
           freezeBalls();
         }, settings.delayAfterSequence);
         activeTimeouts.push(timeout);
@@ -1221,48 +1090,9 @@
         highlightNextBall(afterHighlight);
     }
 
-    function addNumberLabel(ball, number) {
-      if (!loadedFont) return; // Ensure the font is loaded
-      if (settings.isRegular3DMOT) return;
-
-      const geometry = new THREE.TextGeometry(number.toString(), {
-        font: loadedFont,
-        size: settings.numberSize,
-        height: settings.numberSize * 0.1,
-      });
-
-      const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      const textMesh = new THREE.Mesh(geometry, material);
-
-      const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide, });
-      const outlineMesh = new THREE.Mesh(geometry, outlineMaterial);
-      outlineMesh.scale.set(1.05, 1.05, 1.05);
-
-      const textGroup = new THREE.Group();
-      textGroup.add(textMesh);
-      textGroup.add(outlineMesh);
-
-      // Center the text geometry
-      geometry.computeBoundingBox();
-      const centerOffsetX = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-      const centerOffsetY = -0.5 * (geometry.boundingBox.max.y - geometry.boundingBox.min.y);
-      const offsetZ = 1.6 + settings.numberSize * 0.1; // Adjust Z based on number size
-      textGroup.position.set(centerOffsetX, centerOffsetY, offsetZ);
-
-      textGroup.userData.isLabel = true; // Mark as label for easy identification
-      ball.add(textGroup);
-      ball.userData.label = textGroup;
-    }
-
-    function disposeLabel(label) {
-      if (!label) return;
-      disposeObject(label);
-    }
-
     function freezeBalls() {
       for (let ball of balls) {
         ball.userData.velocity.set(0, 0, 0);
-        ball.userData.isRotating = false;
       }
     }
 
@@ -1296,38 +1126,18 @@
         const selectedObject = intersects[0].object;
         const parentBall = selectedObject.parent.type === 'Mesh' ? selectedObject.parent : selectedObject;
 
-        // Check if already selected
         if (selectedBalls.includes(parentBall)) return;
 
         selectedBalls.push(parentBall);
         userSequence.push(parentBall);
 
         const isTarget = targetBalls.includes(parentBall);
-        if (settings.isRegular3DMOT) {
-          if (isTarget) {
-            parentBall.material.color.set(0xffff00); // Turn yellow
-          } else {
-            parentBall.material.color.set(settings.answerFeedback === 'Immediate' ? 0xff0022 : 0xffff00); // Turn red
-          }
+        if (isTarget) {
+          parentBall.material.color.set(0xffff00); // Turn yellow
         } else {
-          if (targetBalls.includes(parentBall)) {
-            // Check if the selected ball is the correct one in the sequence
-            if (parentBall === targetSequence[userSequence.length - 1].ball && !mistakeMade) {
-              // Correct selection
-              parentBall.material.color.set(0xffff00); // Turn yellow
-            } else {
-              // Wrong sequence but correct target ball
-              parentBall.material.color.set(0xffa500); // orange otherwise
-              mistakeMade = true;
-            }
-          } else {
-            // Player selected a distractor ball
-            parentBall.material.color.set(0xff0022); // Turn red
-            mistakeMade = true;
-          }
+          parentBall.material.color.set(settings.answerFeedback === 'Immediate' ? 0xff0022 : 0xffff00); // Turn red
         }
 
-        // Check if the player has selected enough balls
         if (userSequence.length === targetSequence.length) {
           isUserTurn = false;
           checkUserSequence();
@@ -1336,71 +1146,13 @@
     }
 
     function checkUserSequence() {
+      let allTargetsSelected = targetBalls.every(ball => userSequence.includes(ball));
+      let includedDistractor = userSequence.some(ball => !targetBalls.includes(ball));
 
-      // --- START OF ADDED BLOCK ---
-      if (settings.isRegular3DMOT) {
-          // We ignore any specific order and check if the user selected all targetBalls (and only those)
-          
-          // 1) Ensure userSequence contains all targetBalls
-          let allTargetsSelected = targetBalls.every(ball => userSequence.includes(ball));
-          // 2) Ensure userSequence does NOT include any distractors
-          let includedDistractor = userSequence.some(ball => !targetBalls.includes(ball));
+      if (allTargetsSelected && !includedDistractor) {
+        cumulativeScore += settings.level;
+        cumulativeCorrectSelections += targetBalls.length;
 
-          if (allTargetsSelected && !includedDistractor) {
-            // The user is correct in Regular 3D MOT modex
-            cumulativeScore += settings.level;
-            cumulativeCorrectSelections += targetBalls.length;
-
-            messageElement.textContent = 'Correct!';
-            correctAnswersCount++;
-            incorrectAnswersCount = 0; // Reset incorrect count
-
-            if (settings.autoProgression) {
-              adjustSettingsBasedOnPerformance(true);
-            }
-            
-            // Save trial data
-            saveTrialData(settings.level);
-
-            let timeout = setTimeout(startGame, settings.trialEndDelay);
-            activeTimeouts.push(timeout);
-            return; // We exit here, skipping the rest of checkUserSequence
-          } else {
-            // The user is incorrect
-            cumulativeScore += Math.max(settings.level - 1, 0);
-            cumulativeCorrectSelections += userSequence.filter(ball => targetBalls.includes(ball)).length;
-
-            messageElement.textContent = 'Incorrect selection.';
-            incorrectAnswersCount++;
-            correctAnswersCount = 0; // Reset correct count
-
-            if (settings.showAnswers) {
-              showCorrectSequence();
-            }
-            if (settings.autoProgression) {
-              adjustSettingsBasedOnPerformance(false);
-            }
-
-            // Save trial data
-            saveTrialData(trialScores[trialScores.length - 1]);
-
-            let timeout = setTimeout(startGame, settings.trialEndDelay);
-            activeTimeouts.push(timeout);
-            return; // Done
-          }
-        }
-        // --- END OF ADDED BLOCK ---
-
-
-      totalTrials++;
-      cumulativeTotalTargets += targetSequence.length;
-
-      let trialScore = 0;
-      if (!mistakeMade) {
-        // Correct sequence
-        trialScore = settings.level; // Full score
-        cumulativeScore += trialScore;
-        cumulativeCorrectSelections += targetSequence.length;
         messageElement.textContent = 'Correct!';
         correctAnswersCount++;
         incorrectAnswersCount = 0; // Reset incorrect count
@@ -1408,33 +1160,35 @@
         if (settings.autoProgression) {
           adjustSettingsBasedOnPerformance(true);
         }
+        
+        saveTrialData(settings.level);
+
+        let timeout = setTimeout(startGame, settings.trialEndDelay);
+        activeTimeouts.push(timeout);
       } else {
-        // Mistake was made
-        if (userSequence.some(ball => !targetBalls.includes(ball))) {
-          // Player selected a distractor ball
-          trialScore = Math.max(settings.level - 1, 0); // Minimum score is level - 1
-          cumulativeScore += trialScore;
-        } else {
-          // Correct balls but incorrect sequence
-          trialScore = settings.level - 0.5;
-          cumulativeScore += trialScore;
-        }
+        // The user is incorrect
+        cumulativeScore += Math.max(settings.level - 1, 0);
         cumulativeCorrectSelections += userSequence.filter(ball => targetBalls.includes(ball)).length;
-        handleIncorrectSelection(trialScore);
-        return;
+
+        messageElement.textContent = 'Incorrect selection.';
+        incorrectAnswersCount++;
+        correctAnswersCount = 0; // Reset correct count
+
+        showCorrectSequence();
+        if (settings.autoProgression) {
+          adjustSettingsBasedOnPerformance(false);
+        }
+
+        // Save trial data
+        saveTrialData(trialScores[trialScores.length - 1]);
+
+        let timeout = setTimeout(startGame, settings.trialEndDelay);
+        activeTimeouts.push(timeout);
       }
-
-      // Save trial data
-      saveTrialData(trialScore);
-
-      let timeout = setTimeout(startGame, settings.trialEndDelay);
-      activeTimeouts.push(timeout);
     }
 
     function handleIncorrectSelection(trialScore) {
-      if (settings.showAnswers) {
-        showCorrectSequence();
-      }
+      showCorrectSequence();
       messageElement.textContent = 'Incorrect sequence.';
 
       incorrectAnswersCount++;
@@ -1708,15 +1462,8 @@
     function showCorrectSequence() {
       for (let i = 0; i < targetSequence.length; i++) {
         let target = targetSequence[i];
-        // Remove existing label if any
-        if (target.ball.userData.label) {
-          disposeLabel(target.ball.userData.label);
-          target.ball.remove(target.ball.userData.label);
-          target.ball.userData.label = null;
-        }
         if (!userSequence.includes(target.ball))
           target.ball.material.color.set(0x00ff22); // Turn green
-        addNumberLabel(target.ball, i + 1); // Add number label
       }
 
       for (const userSelectedBall of userSequence) {
@@ -1835,45 +1582,29 @@
 
     function updateBallPositions(delta) {
       for (let ball of balls) {
-        if (ball.userData.isRotating) {
-          ball.userData.rotationAngle += ball.userData.rotationSpeed * delta;
-          const angle = ball.userData.rotationAngle;
-          const radius = ball.userData.rotationRadius;
+        ball.position.add(ball.userData.velocity.clone().multiplyScalar(delta));
 
-          if (ball.userData.rotationAxis === 'vertical') {
-            // Vertical rotation around Y-axis
-            ball.position.x = radius * Math.cos(angle);
-            ball.position.z = radius * Math.sin(angle);
-          } else {
-            // Horizontal rotation around X-axis
-            ball.position.y = radius * Math.sin(angle);
-            ball.position.z = radius * Math.cos(angle);
-          }
-        } else {
-          ball.position.add(ball.userData.velocity.clone().multiplyScalar(delta));
-
-          // Bounce off walls
-          const halfX = settings.boxX / 2 - 2;
-          const halfY = settings.boxY / 2 - 2;
-          const halfZ = settings.boxZ / 2 - 2;
-          if (ball.position.x > halfX || ball.position.x < -halfX) {
-            const needsFlip = (ball.position.x > halfX && ball.userData.velocity.x > 0) || (ball.position.x < -halfX && ball.userData.velocity.x < 0);
-            if (needsFlip)
-              ball.userData.velocity.x *= -1;
-            ball.position.x = THREE.MathUtils.clamp(ball.position.x, -halfX, halfX);
-          }
-          if (ball.position.y > halfY || ball.position.y < -halfY) {
-            const needsFlip = (ball.position.y > halfY && ball.userData.velocity.y > 0) || (ball.position.y < -halfY && ball.userData.velocity.y < 0);
-            if (needsFlip)
-              ball.userData.velocity.y *= -1;
-            ball.position.y = THREE.MathUtils.clamp(ball.position.y, -halfY, halfY);
-          }
-          if (ball.position.z > halfZ || ball.position.z < -halfZ) {
-            const needsFlip = (ball.position.z > halfZ && ball.userData.velocity.z > 0) || (ball.position.z < -halfZ && ball.userData.velocity.z < 0);
-            if (needsFlip)
-              ball.userData.velocity.z *= -1;
-            ball.position.z = THREE.MathUtils.clamp(ball.position.z, -halfZ, halfZ);
-          }
+        // Bounce off walls
+        const halfX = settings.boxX / 2 - 2;
+        const halfY = settings.boxY / 2 - 2;
+        const halfZ = settings.boxZ / 2 - 2;
+        if (ball.position.x > halfX || ball.position.x < -halfX) {
+          const needsFlip = (ball.position.x > halfX && ball.userData.velocity.x > 0) || (ball.position.x < -halfX && ball.userData.velocity.x < 0);
+          if (needsFlip)
+            ball.userData.velocity.x *= -1;
+          ball.position.x = THREE.MathUtils.clamp(ball.position.x, -halfX, halfX);
+        }
+        if (ball.position.y > halfY || ball.position.y < -halfY) {
+          const needsFlip = (ball.position.y > halfY && ball.userData.velocity.y > 0) || (ball.position.y < -halfY && ball.userData.velocity.y < 0);
+          if (needsFlip)
+            ball.userData.velocity.y *= -1;
+          ball.position.y = THREE.MathUtils.clamp(ball.position.y, -halfY, halfY);
+        }
+        if (ball.position.z > halfZ || ball.position.z < -halfZ) {
+          const needsFlip = (ball.position.z > halfZ && ball.userData.velocity.z > 0) || (ball.position.z < -halfZ && ball.userData.velocity.z < 0);
+          if (needsFlip)
+            ball.userData.velocity.z *= -1;
+          ball.position.z = THREE.MathUtils.clamp(ball.position.z, -halfZ, halfZ);
         }
       }
 
@@ -1993,17 +1724,6 @@
         [array[i], array[j]] = [array[j], array[i]];
       }
       return array;
-    }
-
-    function generateNonConsecutiveNumbers(count) {
-      const numbers = [];
-      while (numbers.length < count) {
-        const num = Math.floor(Math.random() * 100) + 1;
-        if (!numbers.includes(num)) {
-          numbers.push(num);
-        }
-      }
-      return numbers;
     }
 
     function getRandomColor(excludeColors) {
