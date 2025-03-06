@@ -184,7 +184,7 @@
     Scroll = Zoom, Left Mouse Drag = Rotate, Right Mouse Drag = Move, R = Restart Game
   </div>
   <div id="average-display">
-    Avg Score: N/A | Avg Accuracy: N/A%
+    Avg Accuracy: N/A%
     <button id="show-graph-button">Show Progress Graph</button>
   </div>
   <!-- Popup for Graph -->
@@ -1232,7 +1232,7 @@
       const totalAccuracy = trialAccuracies.reduce((a, b) => a + b, 0);
       const averageAccuracy = totalAccuracy / trialAccuracies.length;
 
-      averageDisplayElement.firstChild.textContent = `Avg Score: ${averageScore.toFixed(2)} | Avg Accuracy: ${averageAccuracy.toFixed(2)}%`;
+      averageDisplayElement.firstChild.textContent = `Avg Accuracy: ${averageAccuracy.toFixed(2)}%`;
     }
 
     function calculateScores() {
