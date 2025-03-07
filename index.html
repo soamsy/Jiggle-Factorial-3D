@@ -227,7 +227,7 @@
     const FRAME_ADJUSTMENT = 60 / 1000;
     const sessionId = Date.now();
     let scene, camera, renderer, controls, anaglyphEffect, then;
-    let ambientLight, directionalLight, directionalLight2;
+    let ambientLight, directionalLight;
     let stats;
     let envMap;
     let gui;
@@ -272,6 +272,8 @@
     let ballTexture;
     let ballNormalTexture;
     let ballTextureLow;
+    let ballLightmap;
+    let wallLightmap
 
     const averageDisplayElement = document.getElementById('average-display');
 
@@ -297,8 +299,8 @@
         numBlueDistractors: 4,
         numColoredDistractors: 0,
         ballSpeed: 0.35,
-        ballOpacity: 0.92,
-        ballMetalness: 0.7,
+        ballOpacity: 0.94,
+        ballMetalness: 0.70,
         ballRoughness: 0.40,
         boxTexture: 'Gray',
         ballRadius: 1.8,
@@ -399,6 +401,7 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.0;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
       document.body.appendChild(renderer.domElement);
 
       // Controls
@@ -409,16 +412,12 @@
       controls.enablePan = true;
 
       // Lighting
-      ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
+      ambientLight = new THREE.AmbientLight(0xffffff, 0.20);
       scene.add(ambientLight);
 
       directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-      directionalLight.position.set(settings.boxX / 2, settings.boxY, settings.boxZ / 2);
+      directionalLight.position.set(settings.boxX / 3, settings.boxY, settings.boxZ * 2 / 3);
       scene.add(directionalLight);
-
-      directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
-      directionalLight2.position.set(0, settings.boxY, settings.boxZ);
-      scene.add(directionalLight2);
 
       scene.add(camera);
 
@@ -436,6 +435,16 @@
       ballTextureLow = textureLoader.load('texture_low.png');
       ballTextureLow.repeat.set(0.5, 0.5);
       ballTextureLow.offset.set(0.31, 0.0);
+
+      ballLightmap = textureLoader.load('lightmap.png');
+      ballLightmap.colorSpace = THREE.SRGBColorSpace;
+      ballLightmap.wrapS = THREE.RepeatWrapping;
+      ballLightmap.wrapT = THREE.RepeatWrapping;
+
+      wallLightmap = textureLoader.load('wall_lightmap.png');
+      wallLightmap.colorSpace = THREE.SRGBColorSpace;
+			wallLightmap.wrapS = THREE.RepeatWrapping;
+			wallLightmap.wrapT = THREE.RepeatWrapping;
 
       gui = new dat.GUI({ autoPlace: false });
       document.getElementById('gui-container').appendChild(gui.domElement);
@@ -771,15 +780,20 @@
         material = new THREE.MeshBasicMaterial({
           color: 0x444444,
           transparent: true,
-          opacity: 0.1,
           side: THREE.BackSide,
         });
       } else {
-        material = new THREE.MeshPhongMaterial({
-          color: 0x444444,
+        material = new THREE.MeshStandardMaterial({
+          color: "#2D2D2D",
           transparent: true,
-          opacity: 0.1,
           side: THREE.BackSide,
+          metalness: 0.9,
+          roughness: 0.8,
+          emissive: "#FFFFFF",
+          emissiveIntensity: 0.08,
+          lightMap: wallLightmap,
+          lightMapIntensity: 1.0,
+          envMapIntensity: 0.7,
         });
       }
       const box = new THREE.Mesh(geometry, material);
@@ -810,11 +824,13 @@
     function updateBoxAppearance() {
       boundingBox.material.map = null;
       boundingBox.material.normalMap = null;
-      boundingBox.material.color.set('#444444');
-      boundingBox.material.opacity = 0.1;
-      boundingBox.material.needsUpdate = true;
-      boundingBox.material.metalness = null;
-      boundingBox.material.roughness = null;
+      boundingBox.material.color.set('#2D2D2D');
+      boundingBox.material.opacity = 0.2;
+      boundingBox.material.metalness = 0.90;
+      boundingBox.material.roughness = 0.6;
+      boundingBox.material.emissiveIntensity = 0.08;
+      boundingBox.material.envMapIntensity = 0.7;
+      boundingBox.material.lightMapIntensity = 1.0;
       boundingBoxEdges.material.color.set('#ffffff');
       boundingBoxEdges.material.opacity = 0.2;
       switch (settings.boxTexture) {
@@ -843,35 +859,40 @@
             boundingBox.material.map = wallTexture2;
             boundingBox.material.normalMap = wallNormal2;
           }
-          boundingBox.material.color.set("#555555");
-          boundingBox.material.opacity = 0.8;
-          boundingBox.material.metalness = 0.9;
-          boundingBox.material.roughness = 0.1;
+          boundingBox.material.color.set("#807777");
+          boundingBox.material.opacity = 1.0;
+          boundingBox.material.metalness = 0.4;
+          boundingBox.material.roughness = 0.7;
+          boundingBox.material.emissiveIntensity = 0.04;
           break;
         case 'Black':
           boundingBox.material.color.set('#000000');
-          boundingBox.material.opacity = 0.9;
+          boundingBox.material.opacity = 1.0;
+          boundingBox.material.metalness = 0.6;
+          boundingBox.material.roughness = 0.9;
           break;
         case 'White':
-          boundingBox.material.color.set('#f7f7f7');
+          boundingBox.material.color.set('#ffffff');
           boundingBox.material.opacity = 1.0;
           boundingBoxEdges.material.color.set('#222222');
           boundingBoxEdges.material.opacity = 1.0;
+          boundingBox.material.metalness = 0.2;
+          boundingBox.material.roughness = 0.1;
           break;
         default:
           break;
       }
+      boundingBox.material.needsUpdate = true;
+      boundingBoxEdges.material.needsUpdate = true;
     }
 
     function updateGraphicsMode() {
       if (['Potato', 'Low'].includes(settings.graphics)) {
         scene.remove(ambientLight);
         scene.remove(directionalLight);
-        scene.remove(directionalLight2);
       } else {
         scene.add(ambientLight);
         scene.add(directionalLight);
-        scene.add(directionalLight2);
       }
     }
 
@@ -931,6 +952,7 @@
 
     function createBall(color) {
       const geometry = new THREE.SphereGeometry(settings.ballRadius, 32, 32);
+      geometry.setAttribute('uv2', new THREE.Float32BufferAttribute(geometry.attributes.uv.array, 2));
       let material;
       if (settings.graphics === 'Potato') {
         material = new THREE.MeshBasicMaterial({ color: color });
@@ -942,11 +964,14 @@
           metalness: settings.ballMetalness,
           roughness: settings.ballRoughness,
           emissive: "#FFFFFF",
-          emissiveIntensity: 0.05,
+          emissiveIntensity: 0.04,
           transparent: true,
           opacity: settings.ballOpacity,
           map: ballTexture,
           normalMap: ballNormalTexture,
+          envMapIntensity: 1.0,
+          lightMap: ballLightmap,
+          lightMapIntensity: 2.0,
         });
       }
 
