@@ -223,7 +223,7 @@
     import { AnaglyphEffect } from './anaglyph.js';
 
     // Global Variables
-    const DEFAULT_BALL_COLOR = '#F4DDCC';
+    const DEFAULT_BALL_COLOR = '#F4E2DD';
     const FRAME_ADJUSTMENT = 60 / 1000;
     const sessionId = Date.now();
     let scene, camera, renderer, controls, anaglyphEffect, then;
@@ -300,8 +300,8 @@
         numColoredDistractors: 0,
         ballSpeed: 0.35,
         ballOpacity: 0.94,
-        ballMetalness: 0.70,
-        ballRoughness: 0.40,
+        ballMetalness: 0.65,
+        ballRoughness: 0.30,
         boxTexture: 'Gray',
         ballRadius: 1.8,
         fitToScreen: 'Auto',
@@ -411,10 +411,10 @@
       controls.enablePan = true;
 
       // Lighting
-      ambientLight = new THREE.AmbientLight(0xffffff, 0.20);
+      ambientLight = new THREE.AmbientLight(0xffffff, 0.40);
       scene.add(ambientLight);
 
-      directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
       directionalLight.position.set(settings.boxX / 3, settings.boxY, settings.boxZ * 2 / 3);
       scene.add(directionalLight);
 
@@ -790,8 +790,7 @@
           roughness: 0.8,
           emissive: "#FFFFFF",
           emissiveIntensity: 0.08,
-          lightMap: wallLightmap,
-          lightMapIntensity: 1.0,
+          envMap: envMap,
           envMapIntensity: 0.7,
         });
       }
@@ -824,10 +823,10 @@
       boundingBox.material.map = null;
       boundingBox.material.normalMap = null;
       boundingBox.material.color.set('#2D2D2D');
-      boundingBox.material.opacity = 0.2;
+      boundingBox.material.opacity = 0.3;
       boundingBox.material.metalness = 0.90;
-      boundingBox.material.roughness = 0.6;
-      boundingBox.material.emissiveIntensity = 0.08;
+      boundingBox.material.roughness = 0.70;
+      boundingBox.material.emissiveIntensity = 0.04;
       boundingBox.material.envMapIntensity = 0.7;
       boundingBox.material.lightMapIntensity = 1.0;
       boundingBoxEdges.material.color.set('#ffffff');
@@ -843,8 +842,12 @@
             boundingBox.material.map = wallTexture1;
             boundingBox.material.normalMap = wallNormal1;
           }
-          boundingBox.material.color.set(null);
-          boundingBox.material.opacity = 0.9;
+          boundingBox.material.color.set("#FFFFFF");
+          boundingBox.material.opacity = 1.0;
+          boundingBox.material.metalness = 0.6;
+          boundingBox.material.roughness = 0.8;
+          boundingBox.material.envMapIntensity = 0.15;
+          boundingBox.material.emissiveIntensity = 0.01;
           break;
         case 'Wall 2':
           if (!wallTexture2) {
@@ -858,25 +861,28 @@
             boundingBox.material.map = wallTexture2;
             boundingBox.material.normalMap = wallNormal2;
           }
-          boundingBox.material.color.set("#807777");
+          boundingBox.material.color.set("#FFEEEE");
           boundingBox.material.opacity = 1.0;
-          boundingBox.material.metalness = 0.4;
-          boundingBox.material.roughness = 0.7;
-          boundingBox.material.emissiveIntensity = 0.04;
+          boundingBox.material.metalness = 0.8;
+          boundingBox.material.roughness = 0.6;
+          boundingBox.material.envMapIntensity = 0.2;
+          boundingBox.material.emissiveIntensity = 0.015;
           break;
         case 'Black':
-          boundingBox.material.color.set('#000000');
+          boundingBox.material.color.set('#050505');
           boundingBox.material.opacity = 1.0;
-          boundingBox.material.metalness = 0.6;
+          boundingBox.material.metalness = 0.8;
           boundingBox.material.roughness = 0.9;
+          boundingBox.material.emissiveIntensity = 0.00;
           break;
         case 'White':
           boundingBox.material.color.set('#ffffff');
           boundingBox.material.opacity = 1.0;
           boundingBoxEdges.material.color.set('#222222');
           boundingBoxEdges.material.opacity = 1.0;
-          boundingBox.material.metalness = 0.2;
-          boundingBox.material.roughness = 0.1;
+          boundingBox.material.metalness = 1.0;
+          boundingBox.material.roughness = 1.0;
+          boundingBox.material.emissiveIntensity = 0.3;
           break;
         default:
           break;
@@ -962,12 +968,11 @@
           color: color,
           metalness: settings.ballMetalness,
           roughness: settings.ballRoughness,
-          emissive: "#FFFFFF",
-          emissiveIntensity: 0.04,
           transparent: true,
           opacity: settings.ballOpacity,
           map: ballTexture,
           normalMap: ballNormalTexture,
+          envMap: envMap,
           envMapIntensity: 1.0,
           lightMap: ballLightmap,
           lightMapIntensity: 2.0,
@@ -992,7 +997,7 @@
       const outlineMaterial = new THREE.MeshBasicMaterial({
         color: 0x000000,
         side: THREE.BackSide,
-        ...(['Potato', 'Low'].includes(settings.graphics) ? {} : { opacity: 0.5, transparent: true }),
+        ...(['Potato', 'Low'].includes(settings.graphics) ? {} : { opacity: 0.9, transparent: true }),
       });
       const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
       ball.add(outline);
@@ -1054,7 +1059,7 @@
       function highlightAllBalls(callback) {
         isSequenceShowing = true;
         for (const object of highlightSequence) {
-          object.ball.material.color.set(0xff9F22);
+          object.ball.material.color.set(0xffAF44);
           object.ball.userData.isCurrentlyHighlighted = true;
         }
         let timeout = setTimeout(() => {
@@ -1156,7 +1161,7 @@
         if (isTarget) {
           parentBall.material.color.set(0xffff00); // Turn yellow
         } else {
-          parentBall.material.color.set(settings.answerFeedback === 'Immediate' ? 0xff0022 : 0xffff00); // Turn red
+          parentBall.material.color.set(settings.answerFeedback === 'Immediate' ? 0xdd0022 : 0xffff00); // Turn red
         }
 
         if (userSequence.length === targetSequence.length) {
@@ -1489,7 +1494,7 @@
 
       for (const userSelectedBall of userSequence) {
         if (!targetBalls.includes(userSelectedBall)) {
-          userSelectedBall.material.color.set(0xff0022); // Turn red
+          userSelectedBall.material.color.set(0xdd0022); // Turn red
         }
       }
     }
