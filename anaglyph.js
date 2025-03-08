@@ -74,7 +74,7 @@ export class AnaglyphEffect {
         '			max( colorL.a, colorR.a ) );',
 
         '	#include <tonemapping_fragment>',
-        '	color = pow(color, vec3(1.0 / 2.2));',
+        '	#include <colorspace_fragment>',
 
         '}'
 
