@@ -172,6 +172,58 @@
       bottom: -20px;
     }
 
+    .dat-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #2c2f33;
+      color: #fff;
+      padding: 20px;
+      border-radius: 5px;
+      border: 1px solid #555;
+      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+      display: none;
+      min-width: 300px;
+      max-width: min(90vw, 700px);
+      max-height: 90vh;
+      overflow: auto;
+      z-index: 1000;
+      font-family: sans-serif;
+    }
+
+    .dat-popup-header {
+        font-size: var(--step-2);
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+
+    .dat-popup-sub-header {
+      font-size: var(--step-1);
+    }
+
+    .dat-popup-content {
+        font-size: var(--step-0);
+    }
+
+    .dat-popup-close {
+        background: #ff5555;
+        color: #fff;
+        border: none;
+        padding: 5px 10px;
+        cursor: pointer;
+        margin-top: 10px;
+        font-size: 12px;
+        display: block;
+        width: 100%;
+        text-align: center;
+        border-radius: 3px;
+    }
+
+    .dat-popup-close:hover {
+        background: #ff7777;
+    }
+
     @media (max-height: 550px) {
       #average-display {
         font-size: var(--step--1);
@@ -202,6 +254,35 @@
       <canvas id="progress-chart"></canvas>
       <button id="close-graph-button">X</button>
     </div>
+  </div>
+  <div id="fps-popup" class="dat-popup">
+    <div class="dat-popup-header">Site Slow?</div>
+    <div class="dat-popup-content">
+      <p class="dat-popup-sub-header">1. Enable Hardware Acceleration in your browser</p>
+
+      <p>For Chrome:</p>
+      <ul>
+        <li>Click the three-dot menu (⋮) in the top-right corner.</li>
+        <li>Select <b>Settings</b></li>
+        <li>Search for "Use graphics acceleration when available"</li>
+        <li>Click to enable</li>
+      </ul>
+      <p>For Firefox:</p>
+      <ul>
+        <li>Click the hamburger menu (☰) in the top-right corner.</li>
+        <li>Select <b>Settings</b></li>
+        <li>Search for "performance settings"</li>
+        <li>Disable "Use recommended performance settings"</li>
+        <li>Force Enable "Use hardware acceleration when available"</li>
+      </ul>
+
+      <p class="dat-popup-sub-header">2. Use Low graphics option</p>
+      <p>
+        Open the "Ball/Box Appearance" menu to the right and change the graphics from "Default" to "Low".
+        You can also try "Potato".
+      </p>
+    </div>
+    <button class="dat-popup-close" onclick="closeFpsPopup()">Close</button>
   </div>
   <script type="importmap">
     {
@@ -526,7 +607,31 @@
       delayTimerAdjustmentFolder.add(settings, 'delayAfterChangeByIncorrect').name('Change by');
       delayTimerAdjustmentFolder.add(settings, 'everyIncorrectDelayAfter').name('Every Incorrect').min(1).step(1);
 
-      const fpsFolder = gui.addFolder('FPS');
+      const fpsFolder = gui.addFolder('FPS ');
+      const fpdFolderTitle = fpsFolder.domElement.querySelector('.title');
+
+      const fpsLink = document.createElement('a');
+      fpsLink.href = '#';
+      fpsLink.style.color = '#55A7E3';
+      fpsLink.style.textDecoration = 'none';
+      fpsLink.style.marginLeft = '2rem';
+      fpsLink.innerText = 'Site slow?';
+      fpsLink.onclick = function(event) {
+          event.preventDefault();
+          event.stopPropagation();
+          openFpsPopup();
+      };
+
+      window.openFpsPopup = () => {
+        document.getElementById('fps-popup').style.display = 'block';
+      }
+
+      window.closeFpsPopup = () => {
+        document.getElementById('fps-popup').style.display = 'none';
+      }
+
+      fpdFolderTitle.appendChild(fpsLink);
+
       fpsFolder.add(settings, 'useFps').name('Throttle FPS').onChange(enabled => {
         updateFpsSettings();
         switchFps(enabled);
