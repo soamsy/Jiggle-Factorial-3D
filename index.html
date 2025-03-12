@@ -354,7 +354,6 @@
     let ballNormalTexture;
     let ballTextureLow;
     let ballLightmap;
-    let wallLightmap
 
     const averageDisplayElement = document.getElementById('average-display');
 
@@ -520,11 +519,6 @@
       ballLightmap.colorSpace = THREE.SRGBColorSpace;
       ballLightmap.wrapS = THREE.RepeatWrapping;
       ballLightmap.wrapT = THREE.RepeatWrapping;
-
-      wallLightmap = textureLoader.load('wall_lightmap.png');
-      wallLightmap.colorSpace = THREE.SRGBColorSpace;
-			wallLightmap.wrapS = THREE.RepeatWrapping;
-			wallLightmap.wrapT = THREE.RepeatWrapping;
 
       gui = new dat.GUI({ autoPlace: false });
       document.getElementById('gui-container').appendChild(gui.domElement);
