@@ -531,8 +531,8 @@
       gui.add(settings, 'numColoredDistractors').name('# Colored Distractors');
       gui.add(settings, 'ballSpeed').min(0).name('Ball Speed');
       gui.add(settings, 'ballRadius').min(0.01).max(8).name('Ball Size').onChange(() => startGame());
-      gui.add(settings, 'boxX').min(1).max(100).name('Box Width').onChange(() => startGame());
-      gui.add(settings, 'boxY').min(1).max(100).name('Box Height').onChange(() => startGame());
+      gui.add(settings, 'boxX').min(10).max(100).name('Box Width').onChange(() => startGame());
+      gui.add(settings, 'boxY').min(10).max(100).name('Box Height').onChange(() => startGame());
       gui.add(settings, 'boxZ').min(1).max(100).name('Box Depth').onChange(() => startGame());
       gui.add(settings, 'fov').min(40).max(120).name('FOV').onChange((value) => {
         camera.fov = value;
@@ -1023,18 +1023,8 @@
     }
 
     function createBalls() {
-      const totalBalls = settings.level + settings.numBlueDistractors + settings.numColoredDistractors;
-
-      // Create an array to store positions to prevent overlapping
-      const positions = [];
-
-      // Create Target Balls
       for (let i = 0; i < settings.level; i++) {
         const ball = createBall(DEFAULT_BALL_COLOR); // Sky blue ball
-
-        // Random non-overlapping position
-        setNonOverlappingPosition(ball, positions);
-
         scene.add(ball);
         balls.push(ball);
         targetBalls.push(ball);
@@ -1043,10 +1033,6 @@
       // Create Blue Distractor Balls
       for (let i = 0; i < settings.numBlueDistractors; i++) {
         const ball = createBall(DEFAULT_BALL_COLOR); // Sky blue ball
-
-        // Random non-overlapping position
-        setNonOverlappingPosition(ball, positions);
-
         scene.add(ball);
         balls.push(ball);
         distractorBalls.push(ball);
@@ -1056,15 +1042,12 @@
       for (let i = 0; i < settings.numColoredDistractors; i++) {
         const color = getRandomColor([DEFAULT_BALL_COLOR, 0xff0000, 0xffff00]); // Exclude sky blue, red, yellow
         const ball = createBall(color);
-
-        // Random non-overlapping position
-        setNonOverlappingPosition(ball, positions);
-
         scene.add(ball);
         balls.push(ball);
         coloredDistractorBalls.push(ball);
       }
 
+      assignRandomPositions(balls);
       assignRandomMovement(balls);
     }
 
@@ -1126,41 +1109,64 @@
       return ball;
     }
 
-    function setNonOverlappingPosition(ball, positions) {
-      const maxAttempts = 100;
-      let attempts = 0;
-      let positionFound = false;
+    function createEqualIntervals(start, end, n, jitter) {
+      start += settings.ballRadius;
+      end -= settings.ballRadius;
+      const width = end - start;
+      const shift = (Math.random() - 0.5) * jitter;
+      const positions = Array.from({ length: n }, (_, i) => start + (i / (n-1)) * width + jitter);
+      shuffleArray(positions);
+      return positions;
+    }
 
-      while (!positionFound && attempts < maxAttempts) {
-        attempts++;
-        const halfX = settings.boxX / 2 - 5;
-        const halfY = settings.boxY / 2 - 5;
-        const halfZ = settings.boxZ / 2 - 5;
-        ball.position.x = (Math.random() - 0.5) * (halfX * 2);
-        ball.position.y = (Math.random() - 0.5) * (halfY * 2);
-        ball.position.z = (Math.random() - 0.5) * (halfZ * 2);
+    function assignRandomPositions(ballArray) {
+      const radius = settings.ballRadius;
+      const boxX = settings.boxX;
+      const boxY = settings.boxY;
+      const boxZ = settings.boxZ;
 
-        let overlapping = false;
-        for (let pos of positions) {
-          if (ball.position.distanceTo(pos) < 3) {
-            overlapping = true;
-            break;
-          }
-        }
+      const xPositions = createEqualIntervals(-boxX/2, boxX/2, ballArray.length, 0.2);
+      const yPositions = createEqualIntervals(-boxY/2, boxY/2, ballArray.length, 0.2);
+      const zPositions = createEqualIntervals(-boxZ/2, boxZ/2, ballArray.length, 0.2);
 
-        if (!overlapping) {
-          positions.push(ball.position.clone());
-          positionFound = true;
-        }
+      const placedPositions = [];
+      function isOverlapping(x, y, z) {
+        return placedPositions.some(([px, py, pz]) => {
+          const distSq = (px - x) ** 2 + (py - y) ** 2 + (pz - z) ** 2;
+          return distSq < (2 * radius) ** 2;
+        });
+      }
+
+      for (let i = 0; i < ballArray.length; i++) {
+        let x = xPositions[i];
+        let y = yPositions[i];
+        let z = zPositions[i];
+        let attempts = 0;
+        const maxAttempts = 500;
+
+        while (isOverlapping(x, y, z) && attempts < maxAttempts) {
+          x = Math.random() * boxX - boxX/2;
+          y = Math.random() * boxY - boxY/2;
+          z = Math.random() * boxZ - boxZ/2;
+          attempts++;
+        };
+
+        placedPositions.push([x, y, z]);
+        ballArray[i].position.set(x, y, z);
       }
     }
 
     function assignRandomMovement(ballArray) {
-      for (let ball of ballArray) {
+      const leftCount = Math.floor(ballArray.length / 2);
+      const rightCount = ballArray.length - leftCount;
+      const xVelocities = [...createEqualIntervals(-0.5, -0.05, leftCount, 0.02), ...createEqualIntervals(0.05, 0.5, rightCount, 0.02)];
+      const yVelocities = [...createEqualIntervals(-0.5, -0.05, leftCount, 0.02), ...createEqualIntervals(0.05, 0.5, rightCount, 0.02)];
+      for (let i in ballArray) {
+        const ball = ballArray[i];
         const direction = new THREE.Vector3(
-          (Math.random() - 0.5),
-          (Math.random() - 0.5),
-          (Math.random() - 0.5)
+          xVelocities[i],
+          yVelocities[i],
+          (Math.random() < 0.5 ? 0.5 : 2.0) * (Math.random() - 0.5)
         ).normalize();
         ball.userData.velocity.copy(direction.multiplyScalar(settings.ballSpeed));
       }
