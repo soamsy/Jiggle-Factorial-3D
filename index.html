@@ -1223,11 +1223,16 @@
         isSequenceShowing = true;
         for (const object of highlightSequence) {
           object.ball.material.color.set(ORANGE);
+          object.ball.material.emissive.set(ORANGE);
+          object.ball.material.emissiveIntensity = 0.10;
           object.ball.userData.isCurrentlyHighlighted = true;
         }
         let timeout = setTimeout(() => {
           for (const object of highlightSequence) {
             object.ball.material.color.set(DEFAULT_BALL_COLOR);
+            object.ball.material.emissive.set(null);
+            object.ball.material.emissiveIntensity = 0.0;
+            object.ball.material.needsUpdate = true;
             object.ball.userData.isCurrentlyHighlighted = false; // Unmark as highlighted
           }
           isSequenceShowing = false;
