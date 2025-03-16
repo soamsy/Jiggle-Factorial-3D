@@ -1296,10 +1296,10 @@
         return;
       }
       const orderedBalls = balls.slice().sort((a, b) => {
-        const aLayer = Math.round(a.position.y / 7) * 7;
-        const bLayer = Math.round(b.position.y / 7) * 7;
+        const aLayer = Math.round(a.position.y / 8) * 8;
+        const bLayer = Math.round(b.position.y / 8) * 8;
         if (aLayer !== bLayer) {
-          return aLayer - bLayer;
+          return bLayer - aLayer;
         }
         if (a.position.x !== b.position.x) {
           return a.position.x - b.position.x;
