@@ -359,6 +359,8 @@
     let isGameStarting = false; // Prevent multiple initializations
     let flashModeTimeouts = []; // To store timeouts related to Flash Mode
     let mistakeMade = false; // Flag to track if a mistake has been made
+    let panAngle = 0.0;
+    let panAngleDx = 0.0;
     let boundingBox;
     let boundingBoxEdges;
     let wallTexture1;
@@ -675,7 +677,7 @@
       updateFpsSettings();
 
       const trialBehaviorFolder = gui.addFolder('Game Timing/Behavior');
-      trialBehaviorFolder.add(settings, 'answerStyle', { 'Keyboard': 'labels', "Click Only": 'none'}).name('Answer Style');
+      trialBehaviorFolder.add(settings, 'answerStyle', { 'Keyboard': 'labels', "Keyboard (Don't rotate at end)": 'labels_no_rotate', "Click Only": 'none'}).name('Answer Style');
       trialBehaviorFolder.add(settings, 'answerFeedback', ['Immediate', 'After Selection']).name('Feedback');
       trialBehaviorFolder.add(settings, 'resetRotation', ['Never', 'On Game Start']).name('Reset Camera');
       trialBehaviorFolder.add(settings, 'trialStartDelay').name('Trial Start Delay (ms)');
@@ -813,6 +815,8 @@
       isUserTurn = false;
       messageElement.textContent = '';
       screenRotationAngle = 0;
+      panAngle = 0;
+      panAngleDx = 0.003;
       mistakeMade = false; // Reset mistake flag
 
       // Create Bounding Box
@@ -1283,7 +1287,7 @@
     }
 
     function labelBalls() {
-      if (settings.answerStyle !== 'labels') {
+      if (!['labels', 'labels_no_rotate'].includes(settings.answerStyle)) {
         return;
       }
       const orderedBalls = balls.slice().sort((a, b) => {
@@ -1763,8 +1767,8 @@
       const now = performance.now();
       const delta = now - then;
       then = now;
-      updateGame(delta * FRAME_ADJUSTMENT);
       controls.update();
+      updateGame(delta * FRAME_ADJUSTMENT);
       render();
     }
 
@@ -1774,8 +1778,8 @@
 
       if (delta > fpsInterval) {
           then = now - (delta % fpsInterval);
-          updateGame(Math.floor(delta/fpsInterval) * fpsMultiplier);
           controls.update();
+          updateGame(Math.floor(delta/fpsInterval) * fpsMultiplier);
           render();
       }
     }
@@ -1795,6 +1799,23 @@
         updateBallPositions(delta);
       } else {
         updateBallLabels(delta);
+      }
+
+      if (isUserTurn && !settings.screenRotation && settings.answerStyle === 'labels') {
+        const angleLimit = 0.35
+        panAngle += panAngleDx * delta;
+        if (panAngle < -angleLimit) {
+          panAngleDx = Math.abs(panAngleDx);
+          panAngle = -angleLimit + panAngleDx * delta;
+        } else if (panAngle > angleLimit) {
+          panAngleDx = -Math.abs(panAngleDx);
+          panAngle = angleLimit + panAngleDx * delta;
+        }
+        const r = Math.sqrt(camera.position.x ** 2 + camera.position.z ** 2)
+        const x = r * Math.sin(panAngle);
+        const z = r * Math.cos(panAngle);
+        camera.position.set(x, camera.position.y, z);
+        camera.lookAt(0, 0, 0);
       }
 
       // Screen Rotation
