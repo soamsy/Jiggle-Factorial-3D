@@ -298,13 +298,37 @@
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { FontLoader } from 'three/addons/loaders/FontLoader.js';
-    import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
     import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
     import Stats from 'three/addons/libs/stats.module.js';
     import { AnaglyphEffect } from './anaglyph.js';
+    import { Text } from 'https://cdn.jsdelivr.net/npm/troika-three-text@0.52.3/+esm'
 
-    // Global Variables
     const DEFAULT_BALL_COLOR = '#F4E2DD';
+    const YELLOW = '#FFFF00';
+    const RED = '#DD0022';
+    const ORANGE = '#FFAF44';
+    const GREEN = '#00ff22';
+    const INPUT_HOTKEYS = [
+      ['a', 'KeyA'],
+      ['s', 'KeyS'],
+      ['d', 'KeyD'],
+      ['f', 'KeyF'],
+      ['j', 'KeyJ'],
+      ['k', 'KeyK'],
+      ['l', "KeyL"],
+      ['g', "KeyG"],
+      ['h', "KeyH"],
+      [';', "Semicolon"],
+      ['v', "KeyV"],
+      ['m', "KeyM"],
+      ['b', "KeyB"],
+      ['n', "KeyN"],
+      ['c', "KeyC"],
+      [',', "Comma"],
+      ['z', "KeyZ"],
+      ['x', "KeyX"],
+      ['.', "Period"],
+    ];
     const FRAME_ADJUSTMENT = 60 / 1000;
     const sessionId = Date.now();
     let scene, camera, renderer, controls, anaglyphEffect, then;
@@ -440,6 +464,7 @@
         fps: 60,
         graphics: 'Default',
         resetRotation: 'On Game Start',
+        answerStyle: 'labels',
       };
 
       settings = {
@@ -650,6 +675,7 @@
       updateFpsSettings();
 
       const trialBehaviorFolder = gui.addFolder('Game Timing/Behavior');
+      trialBehaviorFolder.add(settings, 'answerStyle', { 'Keyboard': 'labels', "Click Only": 'none'}).name('Answer Style');
       trialBehaviorFolder.add(settings, 'answerFeedback', ['Immediate', 'After Selection']).name('Feedback');
       trialBehaviorFolder.add(settings, 'resetRotation', ['Never', 'On Game Start']).name('Reset Camera');
       trialBehaviorFolder.add(settings, 'trialStartDelay').name('Trial Start Delay (ms)');
@@ -720,6 +746,12 @@
             break;
           default:
             break;
+        }
+
+        for (const [text, code] of INPUT_HOTKEYS) {
+          if (code === event.code) {
+            handleHotkey(text);
+          }
         }
       });
     }
@@ -1040,7 +1072,7 @@
 
       // Create Colored Distractor Balls
       for (let i = 0; i < settings.numColoredDistractors; i++) {
-        const color = getRandomColor([DEFAULT_BALL_COLOR, 0xff0000, 0xffff00]); // Exclude sky blue, red, yellow
+        const color = getRandomColor([DEFAULT_BALL_COLOR, RED, YELLOW]); // Exclude sky blue, red, yellow
         const ball = createBall(color);
         scene.add(ball);
         balls.push(ball);
@@ -1186,7 +1218,7 @@
       function highlightAllBalls(callback) {
         isSequenceShowing = true;
         for (const object of highlightSequence) {
-          object.ball.material.color.set(0xffAF44);
+          object.ball.material.color.set(ORANGE);
           object.ball.userData.isCurrentlyHighlighted = true;
         }
         let timeout = setTimeout(() => {
@@ -1211,7 +1243,7 @@
         if (index < highlightSequence.length) {
           // Highlight current ball
           const current = highlightSequence[index];
-          current.ball.material.color.set(0xff0000);
+          current.ball.material.color.set(RED);
           current.ball.userData.isCurrentlyHighlighted = true; // Mark as highlighted
 
           index++;
@@ -1234,6 +1266,7 @@
           mistakeMade = false;
           messageElement.textContent = 'Select in any order';
           freezeBalls();
+          labelBalls();
         }, settings.delayAfterSequence);
         activeTimeouts.push(timeout);
       }
@@ -1247,6 +1280,50 @@
       for (let ball of balls) {
         ball.userData.velocity.set(0, 0, 0);
       }
+    }
+
+    function labelBalls() {
+      if (settings.answerStyle !== 'labels') {
+        return;
+      }
+      const orderedBalls = balls.slice().sort((a, b) => {
+        const aLayer = Math.round(a.position.y / 7) * 7;
+        const bLayer = Math.round(b.position.y / 7) * 7;
+        if (aLayer !== bLayer) {
+          return aLayer - bLayer;
+        }
+        if (a.position.x !== b.position.x) {
+          return a.position.x - b.position.x;
+        }
+        return a.position.z - b.position.z;
+      });
+
+      for (let i = 0; i < Math.min(INPUT_HOTKEYS.length, balls.length); i++) {
+        addHotkeyLabel(orderedBalls[i], INPUT_HOTKEYS[i][0]);
+      }
+    }
+
+    function addHotkeyLabel(ball, hotkeyText) {
+      if (!loadedFont) return;
+
+      const textSize = settings.ballRadius;
+      const text = new Text();
+      text.text = hotkeyText;
+      text.fontSize = textSize;
+      text.color = 0xffffff;
+      text.outlineWidth = textSize * 0.06;
+      text.anchorX = "center";
+      text.anchorY = "middle";
+      text.position.set(0, 0, settings.ballRadius * 1.2);
+
+      text.renderOrder = 999;
+      text.material = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        depthTest: false,
+      });
+      text.sync();
+      ball.add(text);
+      ball.userData.hotkey = hotkeyText;
     }
 
     function onDocumentMouseDown(event) {
@@ -1286,15 +1363,38 @@
 
         const isTarget = targetBalls.includes(parentBall);
         if (isTarget) {
-          parentBall.material.color.set(0xffff00); // Turn yellow
+          parentBall.material.color.set(YELLOW); // Turn yellow
         } else {
-          parentBall.material.color.set(settings.answerFeedback === 'Immediate' ? 0xdd0022 : 0xffff00); // Turn red
+          parentBall.material.color.set(settings.answerFeedback === 'Immediate' ? RED : YELLOW); // Turn red
         }
 
         if (userSequence.length === targetSequence.length) {
           isUserTurn = false;
           checkUserSequence();
         }
+      }
+    }
+
+    function handleHotkey(typedText) {
+      if (!isUserTurn) {
+        return;
+      }
+
+      for (const ball of balls) {
+        if (ball.userData.hotkey === typedText && !selectedBalls.includes(ball)) {
+          selectedBalls.push(ball);
+          userSequence.push(ball);
+          if (targetBalls.includes(ball)) {
+            ball.material.color.set(YELLOW); // Turn yellow
+          } else {
+            ball.material.color.set(settings.answerFeedback === 'Immediate' ? RED : YELLOW); // Turn red
+          }
+        }
+      }
+
+      if (userSequence.length === targetSequence.length) {
+        isUserTurn = false;
+        checkUserSequence();
       }
     }
 
@@ -1616,12 +1716,12 @@
       for (let i = 0; i < targetSequence.length; i++) {
         let target = targetSequence[i];
         if (!userSequence.includes(target.ball))
-          target.ball.material.color.set(0x00ff22); // Turn green
+          target.ball.material.color.set(GREEN); // Turn green
       }
 
       for (const userSelectedBall of userSequence) {
         if (!targetBalls.includes(userSelectedBall)) {
-          userSelectedBall.material.color.set(0xdd0022); // Turn red
+          userSelectedBall.material.color.set(RED); // Turn red
         }
       }
     }
@@ -1693,6 +1793,8 @@
       // Update balls position
       if (!isUserTurn) {
         updateBallPositions(delta);
+      } else {
+        updateBallLabels(delta);
       }
 
       // Screen Rotation
@@ -1742,6 +1844,16 @@
 
         camera.position.set(x, y, z);
         camera.lookAt(scene.position);
+      }
+    }
+
+    function updateBallLabels(delta) {
+      for (const ball of balls) {
+        ball.children.forEach(child => {
+          if (child instanceof Text) {
+            child.lookAt(camera.position);
+          }
+        })
       }
     }
 
