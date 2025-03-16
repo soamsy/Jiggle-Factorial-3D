@@ -1305,6 +1305,10 @@
       for (let i = 0; i < Math.min(INPUT_HOTKEYS.length, balls.length); i++) {
         addHotkeyLabel(orderedBalls[i], INPUT_HOTKEYS[i][0]);
       }
+      const xSum = balls.map(ball => ball.position.x).reduce((a, b) => a + b, 0);
+      if (xSum < 0) {
+        panAngleDx = -Math.abs(panAngleDx);
+      }
     }
 
     function addHotkeyLabel(ball, hotkeyText) {
