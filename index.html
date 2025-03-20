@@ -54,7 +54,7 @@
       display: flex;
       align-items: center;
     }
-    #average-display button {
+    #average-display button, #show-info-button {
       margin-left: 10px;
       background-color: #007bff;
       color: white;
@@ -93,6 +93,16 @@
       padding: 5px 10px;
       cursor: pointer;
       opacity: 0.5;
+    }
+
+    a {
+        color: #55B7F3;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+    a:active {
+        color: #59CDFF;
     }
 
     #center-dot {
@@ -243,6 +253,7 @@
   </div>
   <div id="instructions">
     Scroll = Zoom, Left Mouse Drag = Rotate, Right Mouse Drag = Move, R = Restart Game
+    <button id="show-info-button" onclick="openInfoPopup()">?</button>
   </div>
   <div id="average-display">
     Avg Accuracy: N/A%
@@ -283,6 +294,34 @@
       </p>
     </div>
     <button class="dat-popup-close" onclick="closeFpsPopup()">Close</button>
+  </div>
+  <div id="info-popup" class="dat-popup">
+    <div class="dat-popup-header">3D MOT (3D Multiple Object Tracking)</div>
+    <div class="dat-popup-content">
+      <p>
+        3D MOT is an exercise where you track 4 balls in a 3D space
+        while they move and collide with other distractor balls.
+      </p>
+      <p>
+        Correctly identify all 4 after the balls stop moving, and game speed will increase.
+        Fail to identify any, and speed will decrease. Try to achieve as high of speed as possible.
+      </p>
+
+      <p class="dat-popup-sub-header">Cognitive Benefits</p>
+      <p>According to studies, 3D MOT improves working memory, processing speed, and executive function. It also increases your visuospatial intelligence.</p>
+      <p>
+         Studies have also shown that 3D MOT improves your reaction time in multiple sports and
+         that it reduces the negative cognitive effects of mental and physical fatigue. It improves your driving performance.
+         It improves your decision-making abilities. It also reduces attention deficits such as those seen in ADHD.
+      </p>
+      <ul style="display: flex; flex-direction: column; gap: 10px;">
+        <li><a target="_blank" href="https://www.researchgate.net/publication/270343534_Enhancing_Cognitive_Function_Using_Perceptual-Cognitive_Training">Enhancing Cognitive Function Using [3D MOT]</a></li>
+        <li><a target="_blank" href="https://www.researchgate.net/publication/337603512_3-Dimensional_Multiple_Object_Tracking_Training_Can_Enhance_Selective_Attention_Psychomotor_Speed_and_Cognitive_Flexibility_in_Healthy_Older_Adults">3D MOT Training Can Enhance Selective Attention, Psychomotor Speed, and Cognitive Flexibility in Healthy Older Adults</a></li>
+        <li><a target="_blank" href="https://www.researchgate.net/publication/339011764_Examining_the_roles_of_working_memory_and_visual_attention_in_multiple_object_tracking_expertise">Examining the roles of working memory and visual attention in MOT expertise</a></li>
+        <li><a target="_blank" href="https://sci-hub.ru/10.1037/mil0000125">3D MOT Boosts Working Memory Span: Implications for Cognitive Training in Military Populations</a></li>
+      </ul>
+    </div>
+    <button class="dat-popup-close" onclick="closeInfoPopup()">Close</button>
   </div>
   <script type="importmap">
     {
@@ -387,6 +426,7 @@
 
     // Graph elements
     const showGraphButton = document.getElementById('show-graph-button');
+    const showInfoButton = document.getElementById('show-info-button');
     const graphPopup = document.getElementById('graph-popup');
     const closeGraphButton = document.getElementById('close-graph-button');
 
@@ -652,6 +692,14 @@
 
       window.closeFpsPopup = () => {
         document.getElementById('fps-popup').style.display = 'none';
+      }
+
+      window.openInfoPopup = () => {
+        document.getElementById('info-popup').style.display = 'block';
+      }
+
+      window.closeInfoPopup = () => {
+        document.getElementById('info-popup').style.display = 'none';
       }
 
       fpdFolderTitle.appendChild(fpsLink);
