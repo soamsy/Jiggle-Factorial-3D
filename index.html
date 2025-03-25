@@ -596,7 +596,7 @@
       gui.add(settings, 'level').name('Level');
       gui.add(settings, 'numBlueDistractors').name('# Blue Distractors');
       gui.add(settings, 'numColoredDistractors').name('# Colored Distractors');
-      gui.add(settings, 'ballSpeed').min(0).name('Ball Speed');
+      gui.add(settings, 'ballSpeed').min(0).step(0.001).name('Ball Speed');
       gui.add(settings, 'ballRadius').min(0.01).max(8).name('Ball Size').onChange(() => startGame());
       gui.add(settings, 'boxX').min(10).max(100).name('Box Width').onChange(() => startGame());
       gui.add(settings, 'boxY').min(10).max(100).name('Box Height').onChange(() => startGame());
