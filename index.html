@@ -54,6 +54,16 @@
       display: flex;
       align-items: center;
     }
+
+    #message.hidden,
+    #average-display.hidden,
+    #instructions.hidden,
+    #message.hidden-text,
+    #average-display.hidden-text span,
+    #instructions.hidden-text span {
+      display: none;
+    }
+
     #average-display button, #show-info-button {
       margin-left: 10px;
       background-color: #007bff;
@@ -252,11 +262,11 @@
     <div id="center-dot"></div>
   </div>
   <div id="instructions">
-    Scroll = Zoom, Left Mouse Drag = Rotate, Right Mouse Drag = Move, R = Restart Game
+    <span>Scroll = Zoom, Left Mouse Drag = Rotate, Right Mouse Drag = Move, R = Restart Game</span>
     <button id="show-info-button" onclick="openInfoPopup()">?</button>
   </div>
   <div id="average-display">
-    Avg Accuracy: N/A%
+    <span>Avg Accuracy: N/A%</span>
     <button id="show-graph-button">Show Progress Graph</button>
   </div>
   <!-- Popup for Graph -->
@@ -423,6 +433,7 @@
     let ballLightmap;
 
     const averageDisplayElement = document.getElementById('average-display');
+    const instructionsElement = document.getElementById('instructions');
 
     // Graph elements
     const showGraphButton = document.getElementById('show-graph-button');
@@ -507,6 +518,7 @@
         graphics: 'Default',
         resetRotation: 'On Game Start',
         answerStyle: 'labels',
+        textDisplay: 'show',
       };
 
       settings = {
@@ -614,6 +626,8 @@
       ballAppearanceFolder.add(settings, 'ballRoughness').min(0.0).max(1.0).name('Ball Roughness').onChange(updateBallAppearance);
       ballAppearanceFolder.add(settings, 'ballMetalness').min(0.0).max(1.0).name('Ball Metalness').onChange(updateBallAppearance);
       ballAppearanceFolder.add(settings, 'boxTexture', ['Gray', 'Black', 'White', 'Wall 1', 'Wall 2', 'Wall 3']).name('Box Walls').onChange(updateBoxAppearance);
+      ballAppearanceFolder.add(settings, 'textDisplay', {'Show':'show', 'Hide all': 'hideall', 'Hide all except buttons': 'hideexceptbuttons'}).name('Text UI Display').onChange(updateTextDisplay);
+      updateTextDisplay();
 
       updateGraphicsMode();
 
@@ -951,6 +965,7 @@
       saveSettings();
       repopulateGui();
       updateGraphicsMode();
+      updateTextDisplay();
       startGame();
     }
 
@@ -1103,6 +1118,31 @@
       } else {
         scene.add(ambientLight);
         scene.add(directionalLight);
+      }
+    }
+
+    function updateTextDisplay() {
+      if (settings.textDisplay === 'hideall') {
+        averageDisplayElement.classList.add('hidden');
+        instructionsElement.classList.add('hidden');
+        messageElement.classList.add('hidden');
+        averageDisplayElement.classList.remove('hidden-text');
+        instructionsElement.classList.remove('hidden-text');
+        messageElement.classList.remove('hidden-text');
+      } else if (settings.textDisplay === 'hideexceptbuttons') {
+        averageDisplayElement.classList.remove('hidden');
+        instructionsElement.classList.remove('hidden');
+        messageElement.classList.remove('hidden');
+        averageDisplayElement.classList.add('hidden-text');
+        instructionsElement.classList.add('hidden-text');
+        messageElement.classList.add('hidden-text');
+      } else {
+        averageDisplayElement.classList.remove('hidden');
+        instructionsElement.classList.remove('hidden');
+        messageElement.classList.remove('hidden');
+        averageDisplayElement.classList.remove('hidden-text');
+        instructionsElement.classList.remove('hidden-text');
+        messageElement.classList.remove('hidden-text');
       }
     }
 
