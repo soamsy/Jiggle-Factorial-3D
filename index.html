@@ -503,7 +503,7 @@
         trialStartDelay: 500,
         trialEndDelay: 1200,
         use3DGlasses: false,
-        disparity: 0.15,
+        eyeSeparation: 1.0,
         fov: 75,
         useFps: false,
         showFpsStats: false,
@@ -549,6 +549,7 @@
       const fovRad = THREE.MathUtils.degToRad(settings.fov) * aspect;
       const requiredZ = (settings.boxY) / Math.tan(fovRad / 2);
       camera.position.z = settings.boxZ + requiredZ;
+      camera.focus = 1.5 * settings.boxZ;
 
       // Renderer Setup
       renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -575,7 +576,7 @@
 
       scene.add(camera);
 
-      anaglyphEffect = new AnaglyphEffect(renderer, settings.disparity);
+      anaglyphEffect = new AnaglyphEffect(renderer, settings.eyeSeparation);
       anaglyphEffect.setSize(window.innerWidth, window.innerHeight);
 
       const textureLoader = new THREE.TextureLoader();
@@ -605,7 +606,10 @@
       gui.add(settings, 'ballRadius').min(0.01).max(8).name('Ball Size').onChange(() => startGame());
       gui.add(settings, 'boxX').min(10).max(100).name('Box Width').onChange(() => startGame());
       gui.add(settings, 'boxY').min(10).max(100).name('Box Height').onChange(() => startGame());
-      gui.add(settings, 'boxZ').min(1).max(100).name('Box Depth').onChange(() => startGame());
+      gui.add(settings, 'boxZ').min(1).max(100).name('Box Depth').onChange(() => {
+        camera.focus = 1.5 * settings.boxZ;
+        startGame()
+      });
       gui.add(settings, 'fov').min(40).max(120).name('FOV').onChange((value) => {
         camera.fov = value;
         camera.updateProjectionMatrix();
@@ -638,7 +642,7 @@
       gui.add(settings, 'dotSize').name('Center Dot Size').min(0).onChange(updateCenterDot);
       gui.add(settings, 'blinkDot').name('Make Dot Blink').onChange(updateCenterDot);
       gui.add(settings, 'use3DGlasses').name('Use 3D Glasses').onChange(updateCenterDot);
-      gui.add(settings, 'disparity').name('3D Disparity').min(0).max(0.5).onChange((val) => {
+      gui.add(settings, 'eyeSeparation').name('3D Disparity').min(0).max(1.5).onChange((val) => {
         anaglyphEffect._stereo.eyeSep = val;
       });
 
