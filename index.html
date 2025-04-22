@@ -353,7 +353,7 @@
     const DEFAULT_BALL_COLOR = '#F4E2DD';
     const YELLOW = '#FFFF00';
     const RED = '#DD0022';
-    const ORANGE = '#FFAF44';
+    const ORANGE = '#E99B0B';
     const GREEN = '#00ff22';
     const INPUT_HOTKEYS = [
       ['a', 'KeyA'],
@@ -1317,6 +1317,7 @@
           object.ball.material.emissive.set(ORANGE);
           object.ball.material.emissiveIntensity = 0.10;
           object.ball.userData.isCurrentlyHighlighted = true;
+          object.ball.children[0].material.color.set("#00FFFF");
         }
         let timeout = setTimeout(() => {
           for (const object of highlightSequence) {
@@ -1325,6 +1326,7 @@
             object.ball.material.emissiveIntensity = 0.0;
             object.ball.material.needsUpdate = true;
             object.ball.userData.isCurrentlyHighlighted = false; // Unmark as highlighted
+            object.ball.children[0].material.color.set("#000000");
           }
           isSequenceShowing = false;
           callback();
@@ -1584,7 +1586,7 @@
       const totalAccuracy = trialAccuracies.reduce((a, b) => a + b, 0);
       const averageAccuracy = totalAccuracy / trialAccuracies.length;
 
-      averageDisplayElement.firstChild.textContent = `Avg Accuracy: ${averageAccuracy.toFixed(2)}%`;
+      averageDisplayElement.querySelector('span').textContent = `Avg Accuracy: ${averageAccuracy.toFixed(2)}%`;
     }
 
     function calculateScores() {
