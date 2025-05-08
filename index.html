@@ -474,9 +474,11 @@
         rotateY: true,
         rotateZ: true,
         varyRotationDistance: false,
+        trialStartDelay: 500,
         highlightDuration: 1200,
-        highlightSimultaneously: true,
         delayAfterSequence: 7500,
+        trialEndDelay: 1200,
+        highlightSimultaneously: true,
         dotSize: 12, // Center Dot Size
         blinkDot: true,
         // Flash Mode settings
@@ -506,8 +508,6 @@
         everyCorrectDelayAfter: 1,
         delayAfterChangeByIncorrect: 0,
         everyIncorrectDelayAfter: 1,
-        trialStartDelay: 500,
-        trialEndDelay: 1200,
         use3DGlasses: false,
         eyeSeparation: 1.0,
         fov: 75,
@@ -888,7 +888,10 @@
       createBoundingBox();
 
       // Create Balls
-      createBalls();
+      findLowClusterBallSetup();
+      for (const ball of balls) {
+        scene.add(ball);
+      }
 
       // Start Sequence
       let timeout = setTimeout(highlightTargetBalls, settings.trialStartDelay);
@@ -907,6 +910,7 @@
     }
 
     function clearGameObjects() {
+      clearBalls();
       for (let i = scene.children.length - 1; i >= 0; i--) {
         const obj = scene.children[i];
         if (obj.userData.isGameObject) {
@@ -914,13 +918,20 @@
           scene.remove(obj);
         }
       }
+      targetSequence = [];
+      userSequence = [];
+      selectedBalls = [];
+    }
+
+    function clearBalls() {
+      for (const ball of balls) {
+        disposeObject(ball);
+        scene.remove(ball);
+      }
       balls = [];
       targetBalls = [];
       distractorBalls = [];
       coloredDistractorBalls = [];
-      selectedBalls = [];
-      targetSequence = [];
-      userSequence = [];
     }
 
     function disposeObject(obj) {
@@ -1149,10 +1160,73 @@
       }
     }
 
+    function findLowClusterBallSetup() {
+      createBalls();
+      if (balls.length > 15) {
+        return;
+      }
+      let backup = balls.map(b => ({ position: b.position.clone(), velocity: b.userData.velocity.clone() }));
+      let bestBackup = backup;
+      let bestBadFrames = 999999;
+      for (let tries = 0; tries < 8; tries++) {
+        const numFrameChecks = 30;
+        const numSteps = 8;
+        const delta = 2;
+        let badFrames = 0;
+        for (let check = 0; check < numFrameChecks; check++) {
+          for (let i = 0; i < numSteps; i++) {
+            updateBallPositions(delta);
+          }
+          const clusterBalls = countClusterBalls();
+          if (clusterBalls >= 2) {
+            badFrames += 1;
+          }
+        }
+        if (badFrames < bestBadFrames) {
+          bestBackup = backup;
+          bestBadFrames = badFrames;
+        }
+        if (bestBadFrames <= 2) {
+          break;
+        }
+        clearBalls();
+        createBalls();
+        backup = balls.map(b => ({ position: b.position.clone(), velocity: b.userData.velocity.clone() }));
+      }
+
+      for (let i = 0; i < balls.length; i++) {
+        balls[i].position.copy(bestBackup[i].position);
+        balls[i].userData.velocity.copy(bestBackup[i].velocity);
+      }
+    }
+
+    function countClusterBalls() {
+      let total = 0;
+      for (let i = 0; i < balls.length; i++) {
+        let neighbors = 0;
+        for (let j = i + 1; j < balls.length; j++) {
+          const ball1 = balls[i];
+          const ball2 = balls[j];
+
+          const pos1 = ball1.position;
+          const pos2 = ball2.position;
+
+          const distance = pos1.distanceTo(pos2);
+          const minDist = 10 * settings.ballRadius;
+          if (distance < minDist) {
+            neighbors += 1;
+          }
+        }
+        if (neighbors > 3) {
+          total += 1;
+        }
+      }
+      return total;
+    }
+
     function createBalls() {
       for (let i = 0; i < settings.level; i++) {
         const ball = createBall(DEFAULT_BALL_COLOR); // Sky blue ball
-        scene.add(ball);
         balls.push(ball);
         targetBalls.push(ball);
       }
@@ -1160,7 +1234,6 @@
       // Create Blue Distractor Balls
       for (let i = 0; i < settings.numBlueDistractors; i++) {
         const ball = createBall(DEFAULT_BALL_COLOR); // Sky blue ball
-        scene.add(ball);
         balls.push(ball);
         distractorBalls.push(ball);
       }
@@ -1169,7 +1242,6 @@
       for (let i = 0; i < settings.numColoredDistractors; i++) {
         const color = getRandomColor([DEFAULT_BALL_COLOR, RED, YELLOW]); // Exclude sky blue, red, yellow
         const ball = createBall(color);
-        scene.add(ball);
         balls.push(ball);
         coloredDistractorBalls.push(ball);
       }
