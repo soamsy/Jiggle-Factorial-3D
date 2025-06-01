@@ -2,7 +2,8 @@
   "name": "Just 3D-MOT",
   "short_name": "3D-MOT",
   "start_url": "/",
-  "display": "standalone",
+  "display": "fullscreen",
+  "orientation": "landscape",
   "background_color": "#222222",
   "theme_color": "#001020",
   "icons": [
