@@ -1386,8 +1386,10 @@
         isSequenceShowing = true;
         for (const object of highlightSequence) {
           object.ball.material.color.set(ORANGE);
-          object.ball.material.emissive.set(ORANGE);
-          object.ball.material.emissiveIntensity = 0.15;
+          if (!['Potato', 'Low'].includes(settings.graphics)) {
+            object.ball.material.emissive.set(ORANGE);
+            object.ball.material.emissiveIntensity = 0.15;
+          }
           object.ball.userData.isCurrentlyHighlighted = true;
           object.ball.children[0].material.color.set("#77FFFF");
           object.ball.children[0].scale.set(1.1, 1.1, 1.1);
@@ -1395,8 +1397,10 @@
         let timeout = setTimeout(() => {
           for (const object of highlightSequence) {
             object.ball.material.color.set(DEFAULT_BALL_COLOR);
-            object.ball.material.emissive.set(null);
-            object.ball.material.emissiveIntensity = 0.0;
+            if (!['Potato', 'Low'].includes(settings.graphics)) {
+              object.ball.material.emissive.set(null);
+              object.ball.material.emissiveIntensity = 0.0;
+            }
             object.ball.material.needsUpdate = true;
             object.ball.userData.isCurrentlyHighlighted = false; // Unmark as highlighted
             object.ball.children[0].material.color.set("#000000");
