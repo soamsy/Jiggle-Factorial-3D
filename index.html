@@ -405,12 +405,12 @@
     let correctAnswersCount = 0;
     let incorrectAnswersCount = 0;
     let isGameStarting = false; // Prevent multiple initializations
-    let flashModeTimeouts = []; // To store timeouts related to Flash Mode
     let mistakeMade = false; // Flag to track if a mistake has been made
     let panAngle = 0.0;
     let panAngleDx = 0.0;
     let boundingBox;
     let boundingBoxEdges;
+    let globalDivider;
     let wallTexture1;
     let wallNormal1;
     let wallTexture2;
@@ -481,12 +481,6 @@
         highlightSimultaneously: true,
         dotSize: 12, // Center Dot Size
         blinkDot: true,
-        // Flash Mode settings
-        flashMode: false,
-        flashDurationMin: 160,
-        flashDurationMax: 400,
-        intervalDurationMin: 2000,
-        intervalDurationMax: 3000,
         // Auto Progression settings
         // Level adjustment
         levelChangeByCorrect: 0,
@@ -518,6 +512,8 @@
         resetRotation: 'On Game Start',
         answerStyle: 'labels',
         textDisplay: 'show',
+        divider: 'none',
+        dividerWidth: 1,
       };
 
       settings = {
@@ -652,13 +648,9 @@
         anaglyphEffect._stereo.eyeSep = val;
       });
 
-      // Flash Mode GUI
-      const flashModeFolder = gui.addFolder('Flash Mode Settings');
-      flashModeFolder.add(settings, 'flashMode').name('Enable Flash Mode');
-      flashModeFolder.add(settings, 'flashDurationMin').name('Flash Duration Min (ms)');
-      flashModeFolder.add(settings, 'flashDurationMax').name('Flash Duration Max (ms)');
-      flashModeFolder.add(settings, 'intervalDurationMin').name('Interval Min (ms)');
-      flashModeFolder.add(settings, 'intervalDurationMax').name('Interval Max (ms)');
+      const partitionFolder = gui.addFolder('Partition Settings');
+      partitionFolder.add(settings, 'divider', {'None': 'none', 'Vertical': 'vertical'}).name('Divider').onChange(startGame);
+      partitionFolder.add(settings, 'dividerWidth').min(0.1).max(3).name('Divider Width').onChange(startGame);
 
       // Auto Progression GUI
       const autoProgressionFolder = gui.addFolder('Auto Progression');
@@ -869,9 +861,6 @@
       activeTimeouts.forEach(timeout => clearTimeout(timeout));
       activeTimeouts = [];
 
-      // Clear Flash Mode timeouts
-      clearFlashModeTimeouts();
-
       // Clear game-specific objects
       clearGameObjects();
 
@@ -896,9 +885,6 @@
       // Start Sequence
       let timeout = setTimeout(highlightTargetBalls, settings.trialStartDelay);
       activeTimeouts.push(timeout);
-
-      // Start Flash Mode if enabled
-      startFlashMode();
 
       // Re-enable the Start Game button after initialization
       isGameStarting = false;
@@ -1026,6 +1012,19 @@
       boundingBoxEdges.scale.set(0.998, 0.998, 0.998)
       scene.add(boundingBoxEdges);
       updateBoxAppearance();
+
+      if (settings.divider === 'vertical') {
+        const dividerGeometry = new THREE.BoxGeometry(settings.dividerWidth, boxY - 0.0001, boxZ - 0.0001);
+        const dividerMaterial = new THREE.MeshStandardMaterial({
+          color: 0x444444,
+          transparent: true,
+          opacity: 0.1,
+        });
+        const divider = new THREE.Mesh(dividerGeometry, dividerMaterial);
+        divider.userData.isGameObject = true;
+        scene.add(divider);
+        globalDivider = divider;
+      }
     }
 
     function repeatTexture(texture, x, y) {
@@ -1246,7 +1245,26 @@
         coloredDistractorBalls.push(ball);
       }
 
-      assignRandomPositions(balls);
+      const boxX = settings.boxX;
+      const boxY = settings.boxY;
+      const boxZ = settings.boxZ;
+
+      if (settings.divider === 'vertical') {
+        const leftBalls = [
+          ...targetBalls.slice(0,            Math.ceil(targetBalls.length / 2)),
+          ...distractorBalls.slice(0,        Math.ceil(distractorBalls.length / 2)),
+          ...coloredDistractorBalls.slice(0, Math.ceil(coloredDistractorBalls.length / 2)),
+        ];
+        const rightBalls = [
+          ...targetBalls.slice(           Math.ceil(targetBalls.length / 2),                       targetBalls.length),
+          ...distractorBalls.slice(       Math.ceil(distractorBalls.length / 2),               distractorBalls.length),
+          ...coloredDistractorBalls.slice(Math.ceil(coloredDistractorBalls.length / 2), coloredDistractorBalls.length),
+        ];
+        assignRandomPositions(leftBalls, -boxX/2, 0, -boxY/2, boxY/2, -boxZ/2, boxZ/2);
+        assignRandomPositions(rightBalls, 0, boxX/2, -boxY/2, boxY/2, -boxZ/2, boxZ/2);
+      } else {
+        assignRandomPositions(balls, -boxX/2, boxX/2, -boxY/2, boxY/2, -boxZ/2, boxZ/2);
+      }
       assignRandomMovement(balls);
     }
 
@@ -1292,7 +1310,6 @@
         rotationAngle: 0,
         isGameObject: true, // Mark as game object
         isCurrentlyHighlighted: false,
-        isFlashing: false
       };
 
       const outlineRadius = settings.ballRadius + (['Potato', 'Low'].includes(settings.graphics) ? (settings.ballRadius / 6) : (settings.ballRadius / 15));
@@ -1318,15 +1335,11 @@
       return positions;
     }
 
-    function assignRandomPositions(ballArray) {
+    function assignRandomPositions(ballArray, startX, endX, startY, endY, startZ, endZ) {
       const radius = settings.ballRadius;
-      const boxX = settings.boxX;
-      const boxY = settings.boxY;
-      const boxZ = settings.boxZ;
-
-      const xPositions = createEqualIntervals(-boxX/2, boxX/2, ballArray.length, 0.2);
-      const yPositions = createEqualIntervals(-boxY/2, boxY/2, ballArray.length, 0.2);
-      const zPositions = createEqualIntervals(-boxZ/2, boxZ/2, ballArray.length, 0.2);
+      const xPositions = createEqualIntervals(startX, endX, ballArray.length, 0.2);
+      const yPositions = createEqualIntervals(startY, endY, ballArray.length, 0.2);
+      const zPositions = createEqualIntervals(startZ, endZ, ballArray.length, 0.2);
 
       const placedPositions = [];
       function isOverlapping(x, y, z) {
@@ -1344,9 +1357,9 @@
         const maxAttempts = 500;
 
         while (isOverlapping(x, y, z) && attempts < maxAttempts) {
-          x = Math.random() * boxX - boxX/2;
-          y = Math.random() * boxY - boxY/2;
-          z = Math.random() * boxZ - boxZ/2;
+          x = Math.random() * (endX - startX) + startX;
+          y = Math.random() * (endY - startY) + startY;
+          z = Math.random() * (endZ - startZ) + startZ;
           attempts++;
         };
 
@@ -2084,6 +2097,13 @@
             ball.userData.velocity.z *= -1;
           ball.position.z = THREE.MathUtils.clamp(ball.position.z, -halfZ, halfZ);
         }
+
+        if (settings.divider === 'vertical' && Math.abs(ball.position.x) - settings.ballRadius < settings.dividerWidth) {
+          const sign = Math.sign(ball.position.x);
+          if (ball.userData.velocity.x * sign < 0) {
+            ball.userData.velocity.x *= -1
+          }
+        }
       }
 
       // Check for collisions
@@ -2139,60 +2159,6 @@
           }
         }
       }
-    }
-
-    // Flash Mode Functions
-    function startFlashMode() {
-      if (!settings.flashMode) return;
-
-      // Schedule the next flash
-      const intervalDuration = getRandomInRange(settings.intervalDurationMin, settings.intervalDurationMax);
-      let timeout = setTimeout(() => {
-        flashRandomBalls();
-        startFlashMode(); // Schedule the next flash
-      }, intervalDuration);
-      flashModeTimeouts.push(timeout);
-    }
-
-    function flashRandomBalls() {
-      // Determine flash duration
-      const flashDuration = getRandomInRange(settings.flashDurationMin, settings.flashDurationMax);
-
-      // Get eligible balls (exclude currently highlighted target balls)
-      const eligibleBalls = balls.filter(ball => !ball.userData.isCurrentlyHighlighted);
-
-      if (eligibleBalls.length === 0) return;
-
-      // Randomly select a subset of eligible balls
-      const numberOfBallsToFlash = Math.floor(Math.random() * eligibleBalls.length) + 1;
-      const ballsToFlash = shuffleArray(eligibleBalls).slice(0, numberOfBallsToFlash);
-
-      // Make selected balls invisible
-      ballsToFlash.forEach(ball => {
-        ball.visible = false;
-        ball.userData.isFlashing = true;
-      });
-
-      // Restore visibility after flash duration
-      let timeout = setTimeout(() => {
-        ballsToFlash.forEach(ball => {
-          ball.visible = true;
-          ball.userData.isFlashing = false;
-        });
-      }, flashDuration);
-      flashModeTimeouts.push(timeout);
-    }
-
-    function clearFlashModeTimeouts() {
-      flashModeTimeouts.forEach(timeout => clearTimeout(timeout));
-      flashModeTimeouts = [];
-      // Ensure all balls are visible
-      balls.forEach(ball => {
-        if (ball.userData.isFlashing) {
-          ball.visible = true;
-          ball.userData.isFlashing = false;
-        }
-      });
     }
 
     // Utility Functions
