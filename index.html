@@ -264,7 +264,7 @@
     <button id="show-info-button" onclick="openInfoPopup()">?</button>
   </div>
   <div id="average-display">
-    <span>Avg Accuracy: N/A%</span>
+    <span>Speed: N/A%</span>
     <button id="show-graph-button">Show Progress Graph</button>
   </div>
   <!-- Popup for Graph -->
@@ -627,6 +627,7 @@
       ballAppearanceFolder.add(settings, 'boxTexture', ['Gray', 'Black', 'White', 'Wall 1', 'Wall 2', 'Wall 3']).name('Box Walls').onChange(updateBoxAppearance);
       ballAppearanceFolder.add(settings, 'textDisplay', {'Show':'show', 'Hide all': 'hideall', 'Hide all except buttons': 'hideexceptbuttons'}).name('Text UI Display').onChange(updateTextDisplay);
       updateTextDisplay();
+      updateAverageDisplay();
 
       updateGraphicsMode();
 
@@ -1671,13 +1672,16 @@
     }
 
     function updateAverageDisplay() {
-      const totalScore = trialScores.reduce((a, b) => a + b, 0);
-      const averageScore = totalScore / trialScores.length;
+      const isEmpty = !trialAccuracies || trialAccuracies.length == 0;
+      const isSuccess = trialAccuracies && trialAccuracies[trialAccuracies.length - 1] == 100;
+      let arrow = '';
+      if (isSuccess) {
+        arrow = ' <span style="color: #88FFBB;">▶▶</span>';
+      } else if (!isEmpty) {
+        arrow = ' <span style="color: #FF88BB;">◀◀</span>';
+      }
 
-      const totalAccuracy = trialAccuracies.reduce((a, b) => a + b, 0);
-      const averageAccuracy = totalAccuracy / trialAccuracies.length;
-
-      averageDisplayElement.querySelector('span').textContent = `Avg Accuracy: ${averageAccuracy.toFixed(2)}%`;
+      averageDisplayElement.querySelector('span').innerHTML = `Speed: ${settings.ballSpeed.toFixed(2)}${arrow}`;
     }
 
     function calculateScores() {
